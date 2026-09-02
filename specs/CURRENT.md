@@ -24,12 +24,14 @@ Authorized:
 - minimal Rust workspace and `tarif-core` required for this specification;
 - strict `tarif.action/v1` representation of the supported MCP 2026-07-28 baseline `tools/call` profile;
 - duplicate-safe strict JSON ingestion;
-- sealed validated Action construction and serialized Action IR wire-shape validation;
+- required MCP 2026-07-28 per-request `_meta` enforcement for protocol version and client capabilities;
+- required client capabilities plus optional supported MCP envelope context bound as untrusted execution context, never authenticated identity;
+- sealed validated Action construction and serialized Action IR wire-shape/required-context validation;
 - RFC 8785 JCS canonical bytes through the pinned/qualified dependency wrapper;
 - exact case-sensitive tool-name profile and omitted/present arguments distinction;
-- supported server-visible MCP envelope context bound as untrusted execution context, never authenticated identity;
 - fail-closed rejection of unsupported MRTR/task/unknown execution-affecting metadata;
-- Action IR error taxonomy and adversarial tests;
+- stable Action IR error taxonomy, including unsupported protocol/version/method/name/state/metadata handling;
+- adversarial tests for malformed, ambiguous, missing-required-context, and unsupported states;
 - existing GitHub Actions check context `qualification` with least-privilege exact-head and integrated-candidate committed-lock/fmt/clippy/test/doc-test verification.
 
 Not authorized:
@@ -48,7 +50,7 @@ Not authorized:
 
 ## Mandatory R3 merge blocker
 
-Issue #3 remains open. Live GitHub reads on 2026-09-02 still show `main` unprotected, no required status-check enforcement, and no repository rulesets. PR #11 is reported mergeable even without the required independent approval and while Issue #3 remains open. This is direct negative evidence that mandatory R3 merge enforcement is not currently active.
+Issue #3 remains open. Live GitHub reads on 2026-09-02 still show `main` unprotected, no required status-check enforcement, and no repository rulesets. PR #11 is reported mergeable while Issue #3 remains open. This is direct negative evidence that mandatory R3 merge enforcement is not currently active.
 
 Repository-side `qualification` is evidence, not mandatory external enforcement. The Specification 002 implementation branch may be built, tested, reviewed, and repaired, but it **must not merge into canonical `main` while Issue #3 remains unresolved**.
 
@@ -65,13 +67,22 @@ The dependency lock is committed and reproducible under pinned Rust 1.98.0. The 
 - repeats the locked Rust suite on the integrated candidate;
 - performs no branch write-back.
 
-The latest fully green code head is `d63a172e0506267188045d3c2fc750d40c2a175a` in workflow run `33647588362`, job `100306151131`. This state-reconciliation change creates a successor head, so final-head qualification must be observed again. An ancestor PASS never qualifies a successor head.
+Predecessor `0a44608f3fee3d32843b0c8ff4afe881030f0c55` passed workflow run `33655495482`, job `100332896163`, but independent review then found the MCP 2026-07-28 required-request-metadata defect. The repair and this reconciliation create a successor head, so final-head qualification must be observed again. An ancestor PASS never qualifies a successor head.
 
 ## Review stage
 
-Author-side semantic review found and repaired two substantive canonicalization-boundary defects: programmatic Action construction bypass and ambiguous serialized absent/present argument shapes. External CodeRabbit feedback found and prompted repair of checkout credential persistence and missing integrated-candidate qualification. Those findings are recorded in `docs/evidence/spec-002-r3-implementation.md`.
+Substantive findings repaired so far include:
 
-No author-side review or automated reviewer summary is represented as independent R3 approval. The final exact head still requires the independent review/approval gate required by repository governance, and every substantive thread must be reconciled.
+- programmatic Action construction bypass;
+- ambiguous serialized absent/present argument shapes;
+- checkout credential persistence while executing PR-controlled code;
+- missing synthetic integrated-candidate qualification;
+- missing stable unsupported-protocol taxonomy for serialized Action IR;
+- acceptance of MCP 2026-07-28 requests lacking required `_meta`, protocol version, or client capabilities, including the corresponding serialized Action IR required-context bypass.
+
+These findings are retained in `docs/evidence/spec-002-r3-implementation.md`.
+
+No author-side review or automated status/summary output is represented as independent R3 approval. The final exact successor still requires substantive independent review/approval, and every substantive thread must be reconciled before merge eligibility.
 
 ## Next eligibility
 
