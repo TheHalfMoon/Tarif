@@ -4,42 +4,50 @@
 
 - `000-foundation` — `CLOSED_CANONICAL` at merge `7ab1fdf2efa22e1485e49c2e7e087808c8bef6ac`
 - `001-threat-model-tcb-coverage` — `CLOSED_CANONICAL` at merge `13780df36bd86ec172524eed6545860c90b20d89`
+- `001a-r3-qualification-baseline` — `CLOSED_CANONICAL` at merge `89a03d76a99d16b3ce35a7ba8699219a3dbcf7dc`
 
-## Current governance specification
+## Current specification
 
-`001a-r3-qualification-baseline`
+`002-action-ir-canonicalization`
 
-Status: `ACTIVE_GOVERNANCE`
-Risk: `R2`
-Canonical issue: #4
+Status: `ACTIVE_R3_IMPLEMENTATION_AFTER_SHAPING_MERGE`
+Risk: `R3`
 
-## Current authority
+This candidate state becomes canonical only when the Specification 002 shaping PR is merged. Until then, canonical `main` remains authoritative.
 
-Authorized now:
+## Product authority after shaping merge
 
-- record Specification 001 closeout truth;
-- establish the repository-side `Tarif Qualification` workflow with observed check-run context `qualification`;
-- document and preserve the distinction between workflow presence and mandatory external enforcement;
-- reconcile governance state without adding R3 product behavior.
+Authorized:
 
-Not authorized by Specification 001A:
+- minimal Rust workspace and `tarif-core` required for this specification;
+- strict `tarif.action/v1` representation of the supported MCP 2026-07-28 baseline `tools/call` profile;
+- duplicate-safe strict JSON ingestion;
+- RFC 8785 JCS canonical bytes through a qualified dependency/wrapper;
+- explicit case-sensitive tool-name profile and omitted/present arguments distinction;
+- fail-closed rejection of unsupported MRTR/task/unknown execution-affecting metadata;
+- Action IR error taxonomy and adversarial tests;
+- extension of existing GitHub Actions check context `qualification` with Rust fmt/clippy/test.
 
-- Action IR/canonicalization implementation;
-- MCP gateway/proxy implementation;
-- policy engine, approval, credential, identity, crypto, or evidence-integrity product code;
-- branch/ruleset protection claims not proven by live GitHub state;
+Not authorized:
+
+- MCP proxy/network forwarding;
+- AuthZEN/PDP policy decisions;
+- identity authentication;
+- credential brokering;
+- approval/revalidation;
+- cryptographic action digest/evidence chain;
+- MRTR/task support beyond rejection;
+- A2A/HTTP normalization;
+- information-flow enforcement;
+- release publication;
 - production-security or paid-product replacement claims.
 
 ## Mandatory R3 merge blocker
 
-Issue #3 remains open. Live GitHub truth at selection showed `main` unprotected, required status checks disabled, and no repository rulesets.
+Issue #3 remains open. Live post-001A GitHub truth showed `main` still unprotected and required status-check enforcement off even though repository-side `qualification` runs succeed.
 
-A repository-side workflow is not sufficient to close Issue #3. Before any R3 implementation PR may merge, live external branch/ruleset evidence and the bounded negative/positive merge tests required by Issue #3 must exist.
-
-The first exact-head execution of the new workflow on PR #8 reported GitHub check-run context `qualification`; that observed context is the current candidate for future required-check configuration.
-
-R3 work may be shaped and implemented on bounded branches once its own specification is active, but must not merge while Issue #3 remains unresolved.
+Specification 002 implementation may proceed on a bounded branch after the shaping merge, but **must not merge into canonical `main` while Issue #3 remains unresolved**.
 
 ## Next eligibility
 
-Specification 002 (`Action IR & Deterministic Canonicalization`) may be shaped after Specification 001A is canonically merged and re-read. Its implementation will be R3 and therefore merge-blocked by Issue #3 until external enforcement is proven.
+Specification 003 (`Decision Core & Default-Deny Policy`) is not implementation-authorized until Specification 002 is canonically merged, post-merge qualified, and closed.
