@@ -7,24 +7,33 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   qualification:
     name: qualification
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout implementation branch for formatting repair
+      - name: Checkout exact qualified commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Verify exact diff hygiene
         shell: bash
         run: |
           set -euo pipefail
-          git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+          else
+            before="${{ github.event.before }}"
+            if [[ "$before" =~ ^0+$ ]]; then
+              git diff --check HEAD^ HEAD
+            else
+              git diff --check "$before..${{ github.sha }}"
+            fi
+          fi
 
       - name: Verify canonical governance surface
         shell: bash
@@ -32,14 +41,23 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+
           required = [
-              "AGENTS.md", "CONSTITUTION.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE",
-              "docs/execution-master-plan.md", "docs/threat-model.md", "docs/tcb.md",
-              "docs/coverage-contract.md", "specs/CURRENT.md",
+              "AGENTS.md",
+              "CONSTITUTION.md",
+              "CONTRIBUTING.md",
+              "SECURITY.md",
+              "LICENSE",
+              "docs/execution-master-plan.md",
+              "docs/threat-model.md",
+              "docs/tcb.md",
+              "docs/coverage-contract.md",
+              "specs/CURRENT.md",
           ]
           missing = [path for path in required if not Path(path).is_file()]
           if missing:
               raise SystemExit("missing canonical files: " + ", ".join(missing))
+
           current = Path("specs/CURRENT.md").read_text(encoding="utf-8")
           if "Issue #3" not in current:
               raise SystemExit("specs/CURRENT.md must preserve the live R3 enforcement blocker")
@@ -52,33 +70,19 @@ jobs:
           rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
           rustup override set 1.98.0
           rustc --version | grep -F "rustc 1.98.0"
+          cargo --version
 
       - name: Verify committed dependency lock
         run: cargo metadata --locked --format-version 1 >/dev/null
 
-      - name: Apply pinned rustfmt
-        run: cargo fmt --all
+      - name: Verify pinned Rust formatting
+        run: cargo fmt --all -- --check
 
-      - name: Rust clippy on formatted tree
+      - name: Rust clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-      - name: Rust tests on formatted tree
+      - name: Rust tests
         run: cargo test --workspace --all-targets --locked
 
-      - name: Rust doc tests on formatted tree
+      - name: Rust doc tests
         run: cargo test --workspace --doc --locked
-
-      - name: Commit exact rustfmt output to implementation branch
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- crates/tarif-core; then
-            echo "No rustfmt changes required."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add crates/tarif-core
-          git commit -m "style(002): apply pinned Rust 1.98 rustfmt to corpus"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
