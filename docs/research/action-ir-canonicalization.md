@@ -10,9 +10,16 @@ Tarif cannot authorize one representation of an action and execute a materially 
 
 ## MCP 2026-07-28 observations
 
-Primary source: https://blog.modelcontextprotocol.io/posts/2026-07-28/
+Primary sources:
 
-The 2026-07-28 protocol is stateless at the protocol layer. A modern Streamable HTTP request carries `MCP-Protocol-Version`, `Mcp-Method`, and, for tool calls, `Mcp-Name`; the body carries `method = tools/call`, `params.name`, optional `arguments`, and request metadata.
+- https://modelcontextprotocol.io/specification/2026-07-28/basic/index
+- https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2026-07-28/schema.ts
+- https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/server/tools.mdx
+- https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/changelog.mdx
+
+The 2026-07-28 protocol is stateless at the protocol layer. Every request is self-contained and carries its protocol version and client capabilities in request `_meta`. For Streamable HTTP, a modern request also carries `MCP-Protocol-Version`, `Mcp-Method`, and, for tool calls, `Mcp-Name`; HTTP header/body agreement is deferred to the later MCP gate specification.
+
+For the request body, `io.modelcontextprotocol/protocolVersion` and `io.modelcontextprotocol/clientCapabilities` are required on every request. `clientCapabilities` is per-request state; an empty object means no optional client capabilities, and a server must not infer capabilities from a prior request. `io.modelcontextprotocol/clientInfo` is optional and self-reported. `io.modelcontextprotocol/logLevel` is optional and deprecated in the 2026-07-28 revision but remains in the specification during its compatibility window.
 
 Multi Round-Trip Requests materially affect request meaning. A retry can include `inputResponses` and an opaque echoed `requestState`. The TypeScript SDK treats `requestState` as untrusted input and recommends integrity binding to the principal, originating method/parameters, and expiry.
 
@@ -20,15 +27,17 @@ Therefore a Tarif v0.1 action identity must not silently discard `inputResponses
 
 ### Request `_meta` classification
 
-The MCP TypeScript SDK documents four reserved request-envelope fields under `io.modelcontextprotocol/*`: protocol version, client info, client capabilities, and log level. It also documents W3C trace propagation keys `traceparent`, `tracestate`, and `baggage`.
+The MCP 2026-07-28 schema defines reserved request-envelope fields under `io.modelcontextprotocol/*`, including protocol version, client info, client capabilities, and log level. It also documents W3C trace propagation keys `traceparent`, `tracestate`, and `baggage`.
 
-`clientInfo`/`serverInfo` are self-reported and must not be used as authenticated identity or authorization authority. However, "self-reported" does not prove that a server cannot observe or branch on a supported envelope field. Silently deleting `clientInfo`, `clientCapabilities`, or `logLevel` from an execution identity would therefore make the first boundary weaker than its claim.
+`clientInfo` is self-reported and must not be treated as authenticated identity or authorization authority. However, "self-reported" does not prove that a server cannot observe or branch on a supported envelope field. Silently deleting supported server-visible metadata from an execution identity would therefore make the first boundary weaker than its claim.
 
 The v0.1 decision is:
 
-- protocol version must agree with the explicit supported revision and is represented by `protocol.revision`;
-- present `clientInfo`, `clientCapabilities`, and `logLevel` are preserved under Action IR `mcp_context` as **untrusted execution context**;
-- they never become principal/workload identity or proof of authority;
+- request `_meta` is mandatory for the supported MCP 2026-07-28 profile;
+- `io.modelcontextprotocol/protocolVersion` is mandatory, must agree with the explicit supported revision, and is represented by `protocol.revision` rather than duplicated in `mcp_context`;
+- `io.modelcontextprotocol/clientCapabilities` is mandatory, must be an object, and is always preserved under Action IR `mcp_context`, including when it is `{}`;
+- optional present `io.modelcontextprotocol/clientInfo` and `io.modelcontextprotocol/logLevel` are preserved under `mcp_context` as **untrusted execution context**;
+- preserved metadata never becomes principal/workload identity or proof of authority;
 - standard trace propagation is excluded from Action IR because it is observability context, not action authority;
 - every other `_meta` extension key is unsupported and fails closed until explicitly modeled.
 
@@ -78,7 +87,7 @@ The dependency's own documentation warns that arbitrary-precision JSON numbers a
 
 ## Exact Action IR shape
 
-Specification 002 normalizes only the first supported MCP action class. Example with arguments and client info:
+Specification 002 normalizes only the first supported MCP action class. Example with arguments and the minimum required client capabilities context:
 
 ```json
 {
@@ -99,10 +108,7 @@ Specification 002 normalizes only the first supported MCP action class. Example 
     }
   },
   "mcp_context": {
-    "io.modelcontextprotocol/clientInfo": {
-      "name": "my-app",
-      "version": "1.0"
-    }
+    "io.modelcontextprotocol/clientCapabilities": {}
   }
 }
 ```
@@ -113,11 +119,15 @@ When arguments are omitted:
 "arguments": { "state": "absent" }
 ```
 
-An empty supported context is represented as:
+The minimum valid supported context is:
 
 ```json
-"mcp_context": {}
+"mcp_context": {
+  "io.modelcontextprotocol/clientCapabilities": {}
+}
 ```
+
+`protocolVersion` is intentionally absent from `mcp_context` because the validated request value is represented by `protocol.revision`.
 
 The normalized action is an internal Tarif contract, not a new Internet protocol.
 
@@ -127,11 +137,16 @@ It must not embed policy decisions, resource inference, authenticated principal/
 
 ## Initial unsupported states
 
-Fail closed for the v0.1 Action IR profile when any of the following is present or required but not modeled:
+Fail closed for the v0.1 Action IR profile when any of the following is present, absent when required, or otherwise not modeled:
 
 - MCP method other than `tools/call`;
 - protocol revision other than the explicitly supported revision;
+- missing request `_meta`;
+- missing request-envelope `io.modelcontextprotocol/protocolVersion`;
+- missing request-envelope `io.modelcontextprotocol/clientCapabilities`;
 - request-envelope protocol version that disagrees with the explicit revision;
+- `clientCapabilities` present with a non-object value;
+- serialized Action IR missing required `io.modelcontextprotocol/clientCapabilities` from `mcp_context`;
 - empty or non-profile tool name;
 - `arguments` present but not a JSON object;
 - duplicate JSON object keys anywhere in the parsed action input;
@@ -155,12 +170,16 @@ Implementation qualification must cover at least:
 8. non-profile tool-name rejection;
 9. omitted arguments remaining distinct from `{}`;
 10. `inputResponses` / `requestState` fail-closed behavior;
-11. unknown `_meta` rejection;
-12. protocol-version disagreement rejection;
-13. supported `clientInfo`/`clientCapabilities`/`logLevel` changes producing distinct canonical action context without becoming identity authority;
-14. trace-only metadata not granting or changing authority semantics;
-15. unknown Action IR schema version rejection;
-16. bounded input/depth behavior selected by the caller or adapter.
+11. missing required request `_meta` rejection;
+12. missing required request protocol version rejection;
+13. missing required request client capabilities rejection;
+14. unknown `_meta` rejection;
+15. protocol-version disagreement rejection;
+16. required `clientCapabilities` and optional supported `clientInfo`/`logLevel` changes producing distinct canonical action context without becoming identity authority;
+17. trace-only metadata not granting or changing authority semantics;
+18. unknown Action IR schema version rejection;
+19. serialized Action IR missing required client capabilities context rejection;
+20. bounded input/depth behavior selected by the caller or adapter.
 
 ## Deferred questions
 
