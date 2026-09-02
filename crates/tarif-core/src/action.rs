@@ -367,13 +367,13 @@ pub fn normalize_and_canonicalize(
     Ok((action, bytes))
 }
 
-fn validate_action_arguments_wire_shape(
-    arguments: &Map<String, Value>,
-) -> Result<(), ActionError> {
+fn validate_action_arguments_wire_shape(arguments: &Map<String, Value>) -> Result<(), ActionError> {
     let state = arguments
         .get("state")
         .and_then(Value::as_str)
-        .ok_or_else(|| ActionError::InvalidActionIr("arguments.state must be a string".to_owned()))?;
+        .ok_or_else(|| {
+            ActionError::InvalidActionIr("arguments.state must be a string".to_owned())
+        })?;
 
     match state {
         "absent" => {
