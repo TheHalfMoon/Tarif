@@ -1,37 +1,42 @@
 # Tarif Current Program State
 
+## Closed canonical work
+
+- `000-foundation` — `CLOSED_CANONICAL` at merge `7ab1fdf2efa22e1485e49c2e7e087808c8bef6ac`
+
 ## Current specification
 
-`000-foundation`
+`001-threat-model-tcb-coverage`
 
-Status: `FOUNDING_PR_PENDING`
+Status: `ACTIVE_DOCUMENTATION`
+Risk: `R2`
 
 ## Current authority
 
 Authorized now:
 
-- establish repository governance and constitution;
-- establish the product thesis and open-source doctrine;
-- establish the founding standards/source/competitor/threat maps;
-- establish the bounded v0.1 program sequence;
-- establish Specification 000 acceptance and closeout rules.
+- reconcile Specification 000 closeout evidence;
+- define the v0.1 threat model and deployment assumptions;
+- define logical trusted-computing-base responsibilities;
+- define enforcement coverage states and narrow MCP claim vocabulary;
+- record known residual/bypass risks;
+- record repository governance prerequisites before future R3 implementation.
 
 Not authorized now:
 
-- runtime product implementation;
-- MCP proxy/gateway implementation;
-- Action IR code;
+- Rust/runtime product implementation;
+- MCP gateway/proxy implementation;
+- Action IR or canonicalization code;
 - policy engine code;
+- approval/runtime code;
 - credential brokering;
-- OAuth server behavior;
-- cryptographic/token invention;
-- A2A or HTTP mediation;
+- GitHub workflow/ruleset implementation as part of Spec 001;
+- A2A/HTTP mediation;
 - information-flow enforcement;
-- public claims that Tarif replaces any paid product;
-- v0.1 release publication.
+- production-security or replacement claims.
 
 ## Next eligibility
 
-Specification 001 (`Threat Model, TCB & Coverage Contract`) becomes eligible for shaping only after Specification 000 is merged, canonical `main` is re-read, and the foundation closeout conditions are satisfied.
+Specification 002 (`Action IR & Deterministic Canonicalization`) may be shaped only after Specification 001 is merged, canonical `main` is re-read, and its documentation contract is closed.
 
-Roadmap entries 002–009 are dependency-ordered program outcomes, not implementation authority.
+Before any R3 implementation PR may merge, repository-controlled PR/CI/review enforcement must be established in a separately authorized governance unit.
