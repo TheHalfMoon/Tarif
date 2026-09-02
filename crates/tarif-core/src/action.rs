@@ -337,19 +337,7 @@ pub fn parse_action_ir(raw_action: &str) -> Result<Action, ActionError> {
         .get("arguments")
         .and_then(Value::as_object)
         .ok_or_else(|| ActionError::InvalidActionIr("arguments must be an object".to_owned()))?;
-    match arguments.get("state").and_then(Value::as_str) {
-        Some("absent") if arguments.contains_key("value") => {
-            return Err(ActionError::InvalidActionIr(
-                "arguments.value must be omitted when state is absent".to_owned(),
-            ));
-        }
-        Some("present") if !arguments.contains_key("value") => {
-            return Err(ActionError::InvalidActionIr(
-                "arguments.value is required when state is present".to_owned(),
-            ));
-        }
-        _ => {}
-    }
+    validate_action_arguments_wire_shape(arguments)?;
 
     let wire: ActionWire = serde_json::from_value(value)
         .map_err(|error| ActionError::InvalidActionIr(error.to_string()))?;
@@ -377,6 +365,48 @@ pub fn normalize_and_canonicalize(
     let action = normalize_mcp_tools_call(raw_request, protocol_revision)?;
     let bytes = canonical_bytes(&action)?;
     Ok((action, bytes))
+}
+
+fn validate_action_arguments_wire_shape(
+    arguments: &Map<String, Value>,
+) -> Result<(), ActionError> {
+    let state = arguments
+        .get("state")
+        .and_then(Value::as_str)
+        .ok_or_else(|| ActionError::InvalidActionIr("arguments.state must be a string".to_owned()))?;
+
+    match state {
+        "absent" => {
+            for key in arguments.keys() {
+                if key != "state" {
+                    return Err(ActionError::InvalidActionIr(format!(
+                        "unsupported arguments field for absent state: {key}"
+                    )));
+                }
+            }
+        }
+        "present" => {
+            if !arguments.contains_key("value") {
+                return Err(ActionError::InvalidActionIr(
+                    "arguments.value is required when state is present".to_owned(),
+                ));
+            }
+            for key in arguments.keys() {
+                if !matches!(key.as_str(), "state" | "value") {
+                    return Err(ActionError::InvalidActionIr(format!(
+                        "unsupported arguments field for present state: {key}"
+                    )));
+                }
+            }
+        }
+        _ => {
+            return Err(ActionError::InvalidActionIr(format!(
+                "unsupported arguments state: {state}"
+            )));
+        }
+    }
+
+    Ok(())
 }
 
 fn validate_param_keys(params: &Map<String, Value>) -> Result<(), ActionError> {
