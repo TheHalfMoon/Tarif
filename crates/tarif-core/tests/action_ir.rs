@@ -24,7 +24,10 @@ fn object_order_and_whitespace_canonicalize_identically() {
 fn repeated_canonicalization_is_deterministic() {
     let raw = request(r#"{"name":"search","arguments":{"q":"otters"}}"#);
     let action = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap();
-    assert_eq!(canonical_bytes(&action).unwrap(), canonical_bytes(&action).unwrap());
+    assert_eq!(
+        canonical_bytes(&action).unwrap(),
+        canonical_bytes(&action).unwrap()
+    );
 }
 
 #[test]
@@ -102,7 +105,9 @@ fn unknown_meta_fails_closed() {
 
 #[test]
 fn envelope_protocol_version_must_match() {
-    let raw = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/protocolVersion":"2025-11-25"}}"#);
+    let raw = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/protocolVersion":"2025-11-25"}}"#,
+    );
     let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
     assert_eq!(error.code(), "protocol_version_mismatch");
 }
@@ -116,10 +121,18 @@ fn unsupported_revision_fails_closed() {
 
 #[test]
 fn client_context_is_bound_but_not_promoted_to_identity() {
-    let one = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientInfo":{"name":"one","version":"1"}}}"#);
-    let two = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientInfo":{"name":"two","version":"1"}}}"#);
+    let one = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientInfo":{"name":"one","version":"1"}}}"#,
+    );
+    let two = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientInfo":{"name":"two","version":"1"}}}"#,
+    );
     let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
-    assert!(action.mcp_context.contains_key("io.modelcontextprotocol/clientInfo"));
+    assert!(
+        action
+            .mcp_context
+            .contains_key("io.modelcontextprotocol/clientInfo")
+    );
     assert_ne!(canonical(&one), canonical(&two));
 }
 
@@ -158,14 +171,17 @@ fn unpaired_unicode_surrogate_is_rejected() {
 fn excessive_nesting_is_rejected_by_the_strict_parser_boundary() {
     let nesting = 200;
     let arrays = "[".repeat(nesting) + "0" + &"]".repeat(nesting);
-    let raw = request(&format!(r#"{{"name":"search","arguments":{{"x":{arrays}}}}}"#));
+    let raw = request(&format!(
+        r#"{{"name":"search","arguments":{{"x":{arrays}}}}}"#
+    ));
     let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
     assert_eq!(error.code(), "invalid_json");
 }
 
 #[test]
 fn unknown_top_level_fields_fail_closed() {
-    let raw = r#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search"},"extra":true}"#;
+    let raw =
+        r#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search"},"extra":true}"#;
     let error = normalize_mcp_tools_call(raw, MCP_REVISION_2026_07_28).unwrap_err();
     assert_eq!(error.code(), "unknown_top_level_field");
 }

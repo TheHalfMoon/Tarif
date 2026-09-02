@@ -248,10 +248,12 @@ fn normalize_meta(
     for (key, value) in object {
         match key.as_str() {
             META_PROTOCOL_VERSION => {
-                let observed = value.as_str().ok_or_else(|| ActionError::InvalidMetaField {
-                    field: key.clone(),
-                    expected: "a string",
-                })?;
+                let observed = value
+                    .as_str()
+                    .ok_or_else(|| ActionError::InvalidMetaField {
+                        field: key.clone(),
+                        expected: "a string",
+                    })?;
                 if observed != protocol_revision {
                     return Err(ActionError::ProtocolVersionMismatch {
                         expected: protocol_revision.to_owned(),
