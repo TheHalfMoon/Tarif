@@ -53,6 +53,13 @@ fn jcs_number_semantics_are_applied_before_action_construction() {
 }
 
 #[test]
+fn jcs_incompatible_number_fails_closed() {
+    let raw = request(r#"{"name":"search","arguments":{"n":1e400}}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "invalid_json");
+}
+
+#[test]
 fn unicode_is_not_normalized() {
     let precomposed = request(r#"{"name":"search","arguments":{"q":"é"}}"#);
     let decomposed = request(r#"{"name":"search","arguments":{"q":"é"}}"#);
@@ -97,6 +104,13 @@ fn mrtr_state_fails_closed() {
 }
 
 #[test]
+fn task_augmented_state_fails_closed() {
+    let raw = request(r#"{"name":"search","task":{"id":"task-1"}}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "unsupported_execution_state");
+}
+
+#[test]
 fn unknown_meta_fails_closed() {
     let raw = request(r#"{"name":"search","_meta":{"vendor/example":true}}"#);
     let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
@@ -113,6 +127,16 @@ fn envelope_protocol_version_must_match() {
 }
 
 #[test]
+fn matching_envelope_protocol_version_is_bound_by_protocol_revision_only() {
+    let raw = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}"#,
+    );
+    let action = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap();
+    assert!(action.mcp_context.is_empty());
+    assert_eq!(action.protocol.revision, MCP_REVISION_2026_07_28);
+}
+
+#[test]
 fn unsupported_revision_fails_closed() {
     let raw = request(r#"{"name":"search"}"#);
     let error = normalize_mcp_tools_call(&raw, "2025-11-25").unwrap_err();
@@ -120,7 +144,7 @@ fn unsupported_revision_fails_closed() {
 }
 
 #[test]
-fn client_context_is_bound_but_not_promoted_to_identity() {
+fn client_info_is_bound_but_not_promoted_to_identity() {
     let one = request(
         r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientInfo":{"name":"one","version":"1"}}}"#,
     );
@@ -137,10 +161,65 @@ fn client_context_is_bound_but_not_promoted_to_identity() {
 }
 
 #[test]
+fn client_capabilities_are_bound_as_untrusted_context() {
+    let one = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientCapabilities":{"sampling":{}}}}"#,
+    );
+    let two = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientCapabilities":{"roots":{}}}}"#,
+    );
+    let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
+    assert!(
+        action
+            .mcp_context
+            .contains_key("io.modelcontextprotocol/clientCapabilities")
+    );
+    assert_ne!(canonical(&one), canonical(&two));
+}
+
+#[test]
+fn log_level_is_bound_as_untrusted_context() {
+    let one = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/logLevel":"info"}}"#,
+    );
+    let two = request(
+        r#"{"name":"search","_meta":{"io.modelcontextprotocol/logLevel":"debug"}}"#,
+    );
+    let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
+    assert!(
+        action
+            .mcp_context
+            .contains_key("io.modelcontextprotocol/logLevel")
+    );
+    assert_ne!(canonical(&one), canonical(&two));
+}
+
+#[test]
+fn invalid_supported_meta_types_fail_closed() {
+    for (field, value) in [
+        ("io.modelcontextprotocol/clientInfo", "true"),
+        ("io.modelcontextprotocol/clientCapabilities", "[]"),
+        ("io.modelcontextprotocol/logLevel", "{}"),
+    ] {
+        let raw = request(&format!(
+            r#"{{"name":"search","_meta":{{"{field}":{value}}}}}"#
+        ));
+        let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+        assert_eq!(error.code(), "invalid_meta_field");
+    }
+}
+
+#[test]
 fn trace_context_does_not_become_action_authority() {
-    let one = request(r#"{"name":"search","_meta":{"traceparent":"00-a-b-00"}}"#);
-    let two = request(r#"{"name":"search","_meta":{"traceparent":"00-c-d-00"}}"#);
-    assert_eq!(canonical(&one), canonical(&two));
+    for key in ["traceparent", "tracestate", "baggage"] {
+        let one = request(&format!(
+            r#"{{"name":"search","_meta":{{"{key}":"one"}}}}"#
+        ));
+        let two = request(&format!(
+            r#"{{"name":"search","_meta":{{"{key}":"two"}}}}"#
+        ));
+        assert_eq!(canonical(&one), canonical(&two));
+    }
 }
 
 #[test]
