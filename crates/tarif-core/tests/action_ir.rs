@@ -179,12 +179,8 @@ fn client_capabilities_are_bound_as_untrusted_context() {
 
 #[test]
 fn log_level_is_bound_as_untrusted_context() {
-    let one = request(
-        r#"{"name":"search","_meta":{"io.modelcontextprotocol/logLevel":"info"}}"#,
-    );
-    let two = request(
-        r#"{"name":"search","_meta":{"io.modelcontextprotocol/logLevel":"debug"}}"#,
-    );
+    let one = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/logLevel":"info"}}"#);
+    let two = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/logLevel":"debug"}}"#);
     let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
     assert!(
         action
@@ -212,12 +208,8 @@ fn invalid_supported_meta_types_fail_closed() {
 #[test]
 fn trace_context_does_not_become_action_authority() {
     for key in ["traceparent", "tracestate", "baggage"] {
-        let one = request(&format!(
-            r#"{{"name":"search","_meta":{{"{key}":"one"}}}}"#
-        ));
-        let two = request(&format!(
-            r#"{{"name":"search","_meta":{{"{key}":"two"}}}}"#
-        ));
+        let one = request(&format!(r#"{{"name":"search","_meta":{{"{key}":"one"}}}}"#));
+        let two = request(&format!(r#"{{"name":"search","_meta":{{"{key}":"two"}}}}"#));
         assert_eq!(canonical(&one), canonical(&two));
     }
 }
