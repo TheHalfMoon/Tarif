@@ -34,7 +34,9 @@ Assume the following may be malicious, compromised, misleading, or attacker-cont
 - sub-agent claims;
 - agent-authored approval summaries;
 - malformed protocol input;
-- stale cached resource state.
+- stale cached resource state;
+- unverified identity strings or issuer/audience metadata supplied by an agent or integration;
+- repository- or process-controlled configuration not protected by an external enforcement boundary.
 
 ## Deployment assumptions for v0.1
 
@@ -57,7 +59,7 @@ No threat is marked mitigated before implementation evidence exists.
 | --- | --- | --- | --- |
 | T01 | Prompt injection causes unauthorized tool action | `UNRESOLVED / IN-SCOPE` | injected-content corpus proves denied action cannot exceed policy on mediated path |
 | T02 | Confused deputy uses valid credential for attacker-selected effect | `UNRESOLVED / IN-SCOPE` | exact resource/parameter authorization negative cases |
-| T03 | Credential exfiltration from model-visible environment | `PARTIAL / DEPENDS ON INTEGRATION` | coverage/doctor evidence; broker isolation only when later implemented |
+| T03 | Credential exfiltration from model-visible environment | `UNRESOLVED / DEPENDS ON INTEGRATION` | coverage/doctor evidence; broker isolation only when later implemented |
 | T04 | Argument substitution after authorization | `UNRESOLVED / IN-SCOPE` | canonical request binding and mutation/replay tests |
 | T05 | Tool-name/confusable identifier spoofing | `UNRESOLVED / IN-SCOPE` | canonicalization ambiguity corpus |
 | T06 | Replay of prior grant/approval | `UNRESOLVED / IN-SCOPE` | expiry/nonce/context replay tests where applicable |
@@ -70,6 +72,8 @@ No threat is marked mitigated before implementation evidence exists.
 | T13 | Evidence record tampering/misattribution | `UNRESOLVED / IN-SCOPE FOR EVIDENCE SPEC` | integrity/binding tests in Specification 005 |
 | T14 | Policy unavailable/unknown | `UNRESOLVED / IN-SCOPE` | fail-closed behavior for consequential actions |
 | T15 | Human approval UI is socially engineered by agent prose | `UNRESOLVED / IN-SCOPE` | approval renders trusted normalized fields, not only agent-authored summary |
+| T16 | Principal/agent identity is spoofed, mis-bound, or accepted from the wrong issuer/audience | `UNRESOLVED / IN-SCOPE WHEN IDENTITY IS CONSUMED` | issuer/audience/subject/workload binding tests for each identity integration |
+| T17 | Policy/configuration is weakened or replaced through a repository/process-controlled path | `UNRESOLVED / IN-SCOPE FOR GOVERNANCE+POLICY SPECS` | mandatory external baseline plus tamper/downgrade negative tests |
 
 ## Security non-claims
 
