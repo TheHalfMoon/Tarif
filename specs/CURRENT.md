@@ -18,7 +18,7 @@ Canonical issue: #4
 Authorized now:
 
 - record Specification 001 closeout truth;
-- establish the repository-side `Tarif Qualification / qualification` workflow baseline;
+- establish the repository-side `Tarif Qualification` workflow with observed check-run context `qualification`;
 - document and preserve the distinction between workflow presence and mandatory external enforcement;
 - reconcile governance state without adding R3 product behavior.
 
@@ -35,6 +35,8 @@ Not authorized by Specification 001A:
 Issue #3 remains open. Live GitHub truth at selection showed `main` unprotected, required status checks disabled, and no repository rulesets.
 
 A repository-side workflow is not sufficient to close Issue #3. Before any R3 implementation PR may merge, live external branch/ruleset evidence and the bounded negative/positive merge tests required by Issue #3 must exist.
+
+The first exact-head execution of the new workflow on PR #8 reported GitHub check-run context `qualification`; that observed context is the current candidate for future required-check configuration.
 
 R3 work may be shaped and implemented on bounded branches once its own specification is active, but must not merge while Issue #3 remains unresolved.
 
