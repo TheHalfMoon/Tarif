@@ -13,6 +13,7 @@
 Status: `ACTIVE_R3_IMPLEMENTATION_BRANCH`
 Risk: `R3`
 Canonical shaping merge: `b1b3cecc7c2de32a4ecdba02a6bb752ae7a050c5`
+Implementation PR: `#10`
 Implementation branch: `feat/002-action-ir-canonicalization`
 
 ## Current product authority
@@ -27,7 +28,7 @@ Authorized:
 - supported server-visible MCP envelope context bound as untrusted execution context, never authenticated identity;
 - fail-closed rejection of unsupported MRTR/task/unknown execution-affecting metadata;
 - Action IR error taxonomy and adversarial tests;
-- extension of existing GitHub Actions check context `qualification` with Rust fmt/clippy/test.
+- existing GitHub Actions check context `qualification` with committed-lock verification and pinned Rust fmt/clippy/test/doc-test checks.
 
 Not authorized:
 
@@ -51,7 +52,9 @@ The Specification 002 implementation branch may be built, tested, reviewed, and 
 
 ## Current qualification stage
 
-The first implementation head is a bootstrap candidate. CI must generate a dependency lock artifact, run formatting/clippy/tests, and expose any implementation defects. A later exact head must commit `Cargo.lock` and pass the locked qualification commands before branch implementation can be called verified.
+The dependency lock is committed and reproducible under the pinned Rust 1.98.0 toolchain. Bootstrap CI exposed and corrected the initial lock-transfer and formatting defects; that history is recorded in `docs/evidence/spec-002-r3-implementation.md`.
+
+The qualification workflow is now read-only and checks the immutable PR head SHA. Branch implementation is not verified until one final exact head passes all locked qualification steps and substantive semantic review is reconciled. An ancestor PASS does not qualify a successor head.
 
 ## Next eligibility
 
