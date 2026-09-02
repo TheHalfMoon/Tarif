@@ -5,7 +5,7 @@ Risk: `R1` for documentation/governance mutation; security doctrine itself requi
 
 ## Outcome
 
-Tarif has one coherent, repository-canonical foundation that defines the product category, open-source doctrine, trust principles, source strategy, execution method, and dependency-ordered v0.1 program without authorizing runtime implementation.
+Tarif has one coherent, repository-canonical foundation that defines the product category, open-source doctrine, trust principles, source strategy, contribution/security-reporting posture, execution method, and dependency-ordered v0.1 program without authorizing runtime implementation.
 
 ## Scope in
 
@@ -13,6 +13,8 @@ Tarif has one coherent, repository-canonical foundation that defines the product
 - Apache-2.0 license;
 - project constitution;
 - repository engineering rules;
+- contribution policy;
+- vulnerability-reporting policy;
 - product thesis;
 - founding trust-model draft;
 - standards/source/competitor/threat research maps;
@@ -41,8 +43,9 @@ Tarif has one coherent, repository-canonical foundation that defines the product
 4. Initial program is dependency-ordered 000→009 and only 000 is active.
 5. README clearly states that no production-security claim exists yet.
 6. Apache-2.0 license is present and consistent with the open-source doctrine.
-7. No runtime implementation is introduced by this specification.
-8. Exact founding diff receives the verification/review evidence required by the live repository state before merge.
+7. Security and contribution guidance exist without claiming unsupported production guarantees.
+8. No runtime implementation is introduced by this specification.
+9. Exact founding diff receives the verification/review evidence required by the live repository state before merge.
 
 ## Claim boundary after completion
 
