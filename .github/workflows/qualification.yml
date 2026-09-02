@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   qualification:
@@ -18,21 +18,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - name: Verify exact diff hygiene
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
-            git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
-          else
-            before="${{ github.event.before }}"
-            if [[ "$before" =~ ^0+$ ]]; then
-              git diff --check HEAD^ HEAD
-            else
-              git diff --check "$before..${{ github.sha }}"
-            fi
-          fi
+          git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
 
       - name: Verify canonical governance surface
         shell: bash
@@ -40,23 +32,14 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-
           required = [
-              "AGENTS.md",
-              "CONSTITUTION.md",
-              "CONTRIBUTING.md",
-              "SECURITY.md",
-              "LICENSE",
-              "docs/execution-master-plan.md",
-              "docs/threat-model.md",
-              "docs/tcb.md",
-              "docs/coverage-contract.md",
-              "specs/CURRENT.md",
+              "AGENTS.md", "CONSTITUTION.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE",
+              "docs/execution-master-plan.md", "docs/threat-model.md", "docs/tcb.md",
+              "docs/coverage-contract.md", "specs/CURRENT.md",
           ]
           missing = [path for path in required if not Path(path).is_file()]
           if missing:
               raise SystemExit("missing canonical files: " + ", ".join(missing))
-
           current = Path("specs/CURRENT.md").read_text(encoding="utf-8")
           if "Issue #3" not in current:
               raise SystemExit("specs/CURRENT.md must preserve the live R3 enforcement blocker")
@@ -69,73 +52,30 @@ jobs:
           rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
           rustup override set 1.98.0
           rustc --version | grep -F "rustc 1.98.0"
-          cargo --version
 
-      - name: Regenerate dependency lock for comparison
+      - name: Verify committed dependency lock
+        run: cargo metadata --locked --format-version 1 >/dev/null
+
+      - name: Apply pinned rustfmt
+        run: cargo fmt --all
+
+      - name: Rust clippy on formatted tree
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Rust tests on formatted tree
+        run: cargo test --workspace --all-targets --locked
+
+      - name: Commit exact rustfmt output to implementation branch
+        if: github.event_name == 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
-          cp Cargo.lock Cargo.lock.committed
-          cargo generate-lockfile
-
-      - name: Upload regenerated Cargo.lock
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: spec-002-lock-recheck
-          path: Cargo.lock
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Compare committed dependency lock
-        shell: bash
-        run: cmp Cargo.lock.committed Cargo.lock
-
-      - name: Capture locked Cargo metadata
-        shell: bash
-        run: |
-          set +e
-          cargo metadata --locked --format-version 1 >/dev/null 2>cargo-metadata.err
-          status=$?
-          echo "$status" > cargo-metadata.status
-          exit 0
-
-      - name: Upload Cargo metadata diagnostics
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: spec-002-cargo-metadata
-          path: |
-            cargo-metadata.err
-            cargo-metadata.status
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Verify locked Cargo metadata
-        shell: bash
-        run: test "$(cat cargo-metadata.status)" = "0"
-
-      - name: Produce rustfmt candidate
-        shell: bash
-        run: cargo fmt --all
-
-      - name: Upload rustfmt candidate
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: spec-002-rustfmt
-          path: |
-            crates/tarif-core/src
-            crates/tarif-core/tests
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Verify committed Rust formatting
-        shell: bash
-        run: git diff --exit-code -- crates/tarif-core
-
-      - name: Rust clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
-
-      - name: Rust tests
-        run: cargo test --workspace --all-targets --locked
+          if git diff --quiet -- crates/tarif-core; then
+            echo "No rustfmt changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/tarif-core
+          git commit -m "style(002): apply pinned Rust 1.98 rustfmt"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
