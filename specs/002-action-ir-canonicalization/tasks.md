@@ -19,13 +19,13 @@ Task completion is exact-evidence sensitive. Branch implementation completion is
 
 - [x] T002-11 Establish minimal Rust workspace/toolchain candidate pinned to Rust 1.98.0.
 - [x] T002-12 Implement strict duplicate-safe JSON ingestion candidate.
-- [x] T002-13 Implement sealed Action IR types and MCP baseline normalization candidate.
+- [x] T002-13 Implement sealed Action IR types and MCP 2026-07-28 baseline normalization candidate, including required per-request protocol version and client-capabilities metadata.
 - [x] T002-14 Implement RFC 8785 canonical bytes through pinned `serde_json_canonicalizer` 0.3.2 candidate.
-- [x] T002-15 Implement fail-closed unsupported-state/error taxonomy candidate.
-- [x] T002-16 Add positive/negative/adversarial corpus candidate, including serialized Action IR wire-shape regressions.
+- [x] T002-15 Implement fail-closed unsupported-state/error taxonomy candidate, including stable unsupported-protocol handling and required-metadata rejection.
+- [x] T002-16 Add positive/negative/adversarial corpus candidate, including serialized Action IR wire-shape, unsupported-protocol, missing request `_meta`, missing protocol-version, missing client-capabilities, and missing serialized required-context regressions.
 - [x] T002-17 Harden `qualification` under the same check context with committed-lock verification, least-privilege credential-free exact-head checkout, pinned Rust fmt/clippy/test/doc-test checks, synthetic integrated-candidate checkout, exact parent ancestry proof, and the repeated locked Rust suite on the integrated candidate.
-- [ ] T002-18 Execute focused and full exact-head R3 verification on the final immutable implementation head. Latest fully green code head: `d63a172e0506267188045d3c2fc750d40c2a175a`; the evidence-reconciliation successor must requalify before this task closes.
-- [ ] T002-19 Obtain substantive independent semantic review/approval of the final implementation head and reconcile all findings/threads. Author-side review and automated summaries do not by themselves close this gate.
+- [ ] T002-18 Execute focused and full exact-head R3 verification on the final immutable implementation head. Predecessor `0a44608f3fee3d32843b0c8ff4afe881030f0c55` passed run `33655495482`, job `100332896163`, but the required-metadata repair and reconciliation create a successor that must independently requalify before this task closes.
+- [ ] T002-19 Obtain substantive independent semantic review/approval of the final implementation head and reconcile all findings/threads. The predecessor unsupported-protocol and required-request-metadata findings are repaired; fresh exact-successor review remains required. Author-side review and automated summaries do not by themselves close this gate.
 - [x] T002-20 Maintain a bounded implementation PR without merge: draft PR #10 was closed unmerged as superseded; active non-draft PR #11 preserves the implementation branch and remains blocked by Issue #3.
 
 ## Canonical merge and closeout
