@@ -226,7 +226,8 @@ impl ActionArguments {
 /// Normalize a strict MCP 2026-07-28 baseline `tools/call` JSON-RPC request.
 ///
 /// JSON-RPC correlation fields are validated but are not part of action
-/// authority. Supported server-visible MCP `_meta` fields are bound as
+/// authority. MCP 2026-07-28 requires per-request protocol version and client
+/// capabilities in `_meta`; supported server-visible metadata is bound as
 /// untrusted execution context. Trace-only metadata is excluded.
 pub fn normalize_mcp_tools_call(
     raw_request: &str,
@@ -293,10 +294,10 @@ pub fn normalize_mcp_tools_call(
         Some(_) => return Err(ActionError::ArgumentsNotObject),
     };
 
-    let mcp_context = match params.get("_meta") {
-        None => BTreeMap::new(),
-        Some(meta) => normalize_meta(meta, protocol_revision)?,
-    };
+    let meta = params
+        .get("_meta")
+        .ok_or(ActionError::MissingField("params._meta"))?;
+    let mcp_context = normalize_meta(meta, protocol_revision)?;
 
     let action = Action {
         schema: ACTION_SCHEMA_V1.to_owned(),
@@ -425,6 +426,18 @@ fn normalize_meta(
     protocol_revision: &str,
 ) -> Result<BTreeMap<String, Value>, ActionError> {
     let object = meta.as_object().ok_or(ActionError::MetaNotObject)?;
+
+    if !object.contains_key(META_PROTOCOL_VERSION) {
+        return Err(ActionError::MissingField(
+            "params._meta.io.modelcontextprotocol/protocolVersion",
+        ));
+    }
+    if !object.contains_key(META_CLIENT_CAPABILITIES) {
+        return Err(ActionError::MissingField(
+            "params._meta.io.modelcontextprotocol/clientCapabilities",
+        ));
+    }
+
     let mut context = BTreeMap::new();
 
     for (key, value) in object {
@@ -480,6 +493,12 @@ fn normalize_meta(
 }
 
 fn validate_canonical_context(context: &BTreeMap<String, Value>) -> Result<(), ActionError> {
+    if !context.contains_key(META_CLIENT_CAPABILITIES) {
+        return Err(ActionError::MissingField(
+            "mcp_context.io.modelcontextprotocol/clientCapabilities",
+        ));
+    }
+
     for (key, value) in context {
         match key.as_str() {
             META_CLIENT_INFO | META_CLIENT_CAPABILITIES if value.is_object() => {}
