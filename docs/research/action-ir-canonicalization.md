@@ -18,9 +18,21 @@ Multi Round-Trip Requests materially affect request meaning. A retry can include
 
 Therefore a Tarif v0.1 action identity must not silently discard `inputResponses` or `requestState`. The initial bounded profile will reject those retry fields as unsupported rather than authorize only the visible tool name/arguments and accidentally ignore execution state.
 
-Reserved request `_meta` envelope values such as `clientInfo` are self-reported. MCP SDK guidance says `clientInfo`/`serverInfo` are for display/logging/debugging and must not be security decision inputs. Trace context is observability metadata, not action authority.
+### Request `_meta` classification
 
-Unknown or extension `_meta` keys may carry semantics that Tarif has not modeled. The initial profile therefore rejects unknown execution-affecting metadata instead of silently dropping it from the authority identity.
+The MCP TypeScript SDK documents four reserved request-envelope fields under `io.modelcontextprotocol/*`: protocol version, client info, client capabilities, and log level. It also documents W3C trace propagation keys `traceparent`, `tracestate`, and `baggage`.
+
+`clientInfo`/`serverInfo` are self-reported and must not be used as authenticated identity or authorization authority. However, "self-reported" does not prove that a server cannot observe or branch on a supported envelope field. Silently deleting `clientInfo`, `clientCapabilities`, or `logLevel` from an execution identity would therefore make the first boundary weaker than its claim.
+
+The v0.1 decision is:
+
+- protocol version must agree with the explicit supported revision and is represented by `protocol.revision`;
+- present `clientInfo`, `clientCapabilities`, and `logLevel` are preserved under Action IR `mcp_context` as **untrusted execution context**;
+- they never become principal/workload identity or proof of authority;
+- standard trace propagation is excluded from Action IR because it is observability context, not action authority;
+- every other `_meta` extension key is unsupported and fails closed until explicitly modeled.
+
+This is intentionally conservative. It avoids both trusting self-reported metadata and pretending that unknown server-visible metadata cannot affect execution.
 
 ## Tool names
 
@@ -31,7 +43,7 @@ Current MCP tool documentation recommends:
 - ASCII letters, digits, `_`, `-`, and `.` only;
 - no spaces, commas, or other special characters.
 
-These are protocol `SHOULD` rules rather than a universal security proof. Tarif v0.1 intentionally adopts the recommended ASCII profile as a stricter supported subset. Non-conforming names fail closed as unsupported. Tarif does not case-fold, Unicode-normalize, or infer aliases.
+These are protocol `SHOULD` rules rather than a universal security proof. Tarif v0.1 intentionally adopts the recommended ASCII profile as a stricter supported subset. Non-conforming names fail closed as unsupported. Tarif does not case-fold, Unicode-normalize, infer aliases, or rely on self-reported `serverInfo.name` for cross-server disambiguation.
 
 This is a compatibility narrowing, not a claim that MCP universally forbids every other name.
 
@@ -52,7 +64,7 @@ Relevant JCS requirements:
 - object properties are deterministically sorted;
 - canonical output emits no inter-token whitespace.
 
-Security consequence: two Unicode strings that are canonically equivalent under NFC/NFD but byte/code-point distinct remain distinct Tarif values. Tarif must never normalize them before authorization.
+Security consequence: two Unicode strings that are canonically equivalent under NFC/NFD but code-point distinct remain distinct Tarif values. Tarif must never normalize them before authorization.
 
 ## Rust implementation candidate
 
@@ -62,27 +74,56 @@ https://docs.rs/crate/serde_json_canonicalizer/0.3.2
 
 It is a candidate dependency, not automatic authority. Specification 002 implementation must wrap any serializer with strict input validation so duplicate object keys and unsupported input cannot be silently collapsed before canonicalization.
 
-The dependency's own documentation warns that arbitrary-precision JSON numbers are converted to doubles and can lose precision. Tarif therefore adopts JCS/I-JSON semantics explicitly; applications requiring exact higher precision must use strings. The execution adapter must execute from the validated normalized value, not separately reinterpret an unvalidated raw number representation.
+The dependency's own documentation warns that arbitrary-precision JSON numbers are converted to doubles and can lose precision. Tarif therefore adopts JCS/I-JSON semantics explicitly; applications requiring exact higher precision must use strings. A later execution adapter must execute from the validated normalized value rather than separately reinterpreting an unvalidated raw number representation.
 
-## Action model boundary
+## Exact Action IR shape
 
-Specification 002 should normalize only the first supported MCP action class:
+Specification 002 normalizes only the first supported MCP action class. Example with arguments and client info:
 
-```text
-protocol = mcp
-revision = 2026-07-28
-operation = tools/call
-target = exact tool name
-arguments = explicit absent/present state plus validated JSON object
+```json
+{
+  "schema": "tarif.action/v1",
+  "protocol": {
+    "name": "mcp",
+    "revision": "2026-07-28"
+  },
+  "operation": "tools/call",
+  "target": {
+    "kind": "mcp_tool",
+    "name": "search"
+  },
+  "arguments": {
+    "state": "present",
+    "value": {
+      "q": "otters"
+    }
+  },
+  "mcp_context": {
+    "io.modelcontextprotocol/clientInfo": {
+      "name": "my-app",
+      "version": "1.0"
+    }
+  }
+}
+```
+
+When arguments are omitted:
+
+```json
+"arguments": { "state": "absent" }
+```
+
+An empty supported context is represented as:
+
+```json
+"mcp_context": {}
 ```
 
 The normalized action is an internal Tarif contract, not a new Internet protocol.
 
-It must preserve the distinction between omitted arguments and an explicitly present empty object.
+It must preserve the distinction between omitted arguments and an explicitly present empty object. Supported untrusted MCP context is bound to the canonical action but does not become authenticated identity.
 
-It must not treat self-reported MCP client metadata as a principal or workload identity. Identity binding belongs to later integrations.
-
-It must not embed policy decisions, resource inference, approval state, credentials, or evidence digests. Those belong to later specifications.
+It must not embed policy decisions, resource inference, authenticated principal/workload identity, approval state, credentials, or evidence digests. Those belong to later specifications.
 
 ## Initial unsupported states
 
@@ -90,14 +131,15 @@ Fail closed for the v0.1 Action IR profile when any of the following is present 
 
 - MCP method other than `tools/call`;
 - protocol revision other than the explicitly supported revision;
+- request-envelope protocol version that disagrees with the explicit revision;
 - empty or non-profile tool name;
 - `arguments` present but not a JSON object;
 - duplicate JSON object keys anywhere in the parsed action input;
 - invalid Unicode / JCS-incompatible JSON;
 - unsupported numeric input outside JCS/I-JSON semantics;
 - `inputResponses` or `requestState`;
-- unknown execution-affecting `_meta` extensions;
-- task-augmented or other extension semantics not explicitly represented.
+- task-augmented execution;
+- `_meta` extension keys outside the explicit supported-envelope/trace allowlist.
 
 ## Required adversarial corpus
 
@@ -113,13 +155,17 @@ Implementation qualification must cover at least:
 8. non-profile tool-name rejection;
 9. omitted arguments remaining distinct from `{}`;
 10. `inputResponses` / `requestState` fail-closed behavior;
-11. unknown/unsupported metadata fail-closed behavior;
-12. unknown Action IR schema version rejection;
-13. bounded input/depth behavior selected by the caller or adapter.
+11. unknown `_meta` rejection;
+12. protocol-version disagreement rejection;
+13. supported `clientInfo`/`clientCapabilities`/`logLevel` changes producing distinct canonical action context without becoming identity authority;
+14. trace-only metadata not granting or changing authority semantics;
+15. unknown Action IR schema version rejection;
+16. bounded input/depth behavior selected by the caller or adapter.
 
 ## Deferred questions
 
 - final transport-level size/depth defaults belong to the MCP gate/integration specification after evidence about real workloads;
+- HTTP header/body agreement for `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, and `Mcp-Param-*` belongs to the MCP gate specification;
 - cryptographic digests and evidence binding belong to Specification 005;
 - approval binding belongs to Specification 006;
 - AuthZEN subject/action/resource/context mapping belongs to the decision/policy layer, not canonicalization;
