@@ -10,10 +10,11 @@
 
 `002-action-ir-canonicalization`
 
-Status: `ACTIVE_R3_IMPLEMENTATION_BRANCH`
+Status: `ACTIVE_R3_BRANCH_VERIFICATION`
 Risk: `R3`
 Canonical shaping merge: `b1b3cecc7c2de32a4ecdba02a6bb752ae7a050c5`
-Implementation PR: `#10`
+Active implementation PR: `#11`
+Superseded implementation PR: `#10` (closed unmerged; replaced only to obtain a non-draft review surface)
 Implementation branch: `feat/002-action-ir-canonicalization`
 
 ## Current product authority
@@ -23,12 +24,13 @@ Authorized:
 - minimal Rust workspace and `tarif-core` required for this specification;
 - strict `tarif.action/v1` representation of the supported MCP 2026-07-28 baseline `tools/call` profile;
 - duplicate-safe strict JSON ingestion;
+- sealed validated Action construction and serialized Action IR wire-shape validation;
 - RFC 8785 JCS canonical bytes through the pinned/qualified dependency wrapper;
 - exact case-sensitive tool-name profile and omitted/present arguments distinction;
 - supported server-visible MCP envelope context bound as untrusted execution context, never authenticated identity;
 - fail-closed rejection of unsupported MRTR/task/unknown execution-affecting metadata;
 - Action IR error taxonomy and adversarial tests;
-- existing GitHub Actions check context `qualification` with committed-lock verification and pinned Rust fmt/clippy/test/doc-test checks.
+- existing GitHub Actions check context `qualification` with least-privilege exact-head and integrated-candidate committed-lock/fmt/clippy/test/doc-test verification.
 
 Not authorized:
 
@@ -46,15 +48,30 @@ Not authorized:
 
 ## Mandatory R3 merge blocker
 
-Issue #3 remains open. Repository-side `qualification` is evidence, not mandatory external enforcement.
+Issue #3 remains open. Live GitHub reads on 2026-09-02 still show `main` unprotected, no required status-check enforcement, and no repository rulesets. PR #11 is reported mergeable even without the required independent approval and while Issue #3 remains open. This is direct negative evidence that mandatory R3 merge enforcement is not currently active.
 
-The Specification 002 implementation branch may be built, tested, reviewed, and repaired. It **must not merge into canonical `main` while Issue #3 remains unresolved**.
+Repository-side `qualification` is evidence, not mandatory external enforcement. The Specification 002 implementation branch may be built, tested, reviewed, and repaired, but it **must not merge into canonical `main` while Issue #3 remains unresolved**.
 
 ## Current qualification stage
 
-The dependency lock is committed and reproducible under the pinned Rust 1.98.0 toolchain. Bootstrap CI exposed and corrected the initial lock-transfer and formatting defects; that history is recorded in `docs/evidence/spec-002-r3-implementation.md`.
+The dependency lock is committed and reproducible under pinned Rust 1.98.0. The current workflow:
 
-The qualification workflow is now read-only and checks the immutable PR head SHA. Branch implementation is not verified until one final exact head passes all locked qualification steps and substantive semantic review is reconciled. An ancestor PASS does not qualify a successor head.
+- grants only `contents: read`;
+- disables checkout credential persistence;
+- checks the immutable PR head;
+- verifies locked metadata, formatting, clippy, tests, and doc tests;
+- separately checks the synthetic integrated PR candidate;
+- verifies its parents are the exact PR base/head SHAs;
+- repeats the locked Rust suite on the integrated candidate;
+- performs no branch write-back.
+
+The latest fully green code head is `d63a172e0506267188045d3c2fc750d40c2a175a` in workflow run `33647588362`, job `100306151131`. This state-reconciliation change creates a successor head, so final-head qualification must be observed again. An ancestor PASS never qualifies a successor head.
+
+## Review stage
+
+Author-side semantic review found and repaired two substantive canonicalization-boundary defects: programmatic Action construction bypass and ambiguous serialized absent/present argument shapes. External CodeRabbit feedback found and prompted repair of checkout credential persistence and missing integrated-candidate qualification. Those findings are recorded in `docs/evidence/spec-002-r3-implementation.md`.
+
+No author-side review or automated reviewer summary is represented as independent R3 approval. The final exact head still requires the independent review/approval gate required by repository governance, and every substantive thread must be reconciled.
 
 ## Next eligibility
 

@@ -19,20 +19,20 @@ Task completion is exact-evidence sensitive. Branch implementation completion is
 
 - [x] T002-11 Establish minimal Rust workspace/toolchain candidate pinned to Rust 1.98.0.
 - [x] T002-12 Implement strict duplicate-safe JSON ingestion candidate.
-- [x] T002-13 Implement Action IR types and MCP baseline normalization candidate.
+- [x] T002-13 Implement sealed Action IR types and MCP baseline normalization candidate.
 - [x] T002-14 Implement RFC 8785 canonical bytes through pinned `serde_json_canonicalizer` 0.3.2 candidate.
 - [x] T002-15 Implement fail-closed unsupported-state/error taxonomy candidate.
-- [x] T002-16 Add positive/negative/adversarial corpus candidate.
-- [x] T002-17 Extend `qualification` under the same check context with committed-lock verification, read-only pinned Rust fmt/clippy/test/doc-test checks, and exact PR-head checkout.
-- [ ] T002-18 Execute focused and full exact-head R3 verification on the final immutable implementation head.
-- [ ] T002-19 Obtain substantive semantic review of the final implementation head and reconcile all threads.
-- [x] T002-20 Open and maintain bounded draft implementation PR #10; do not merge while Issue #3 is open.
+- [x] T002-16 Add positive/negative/adversarial corpus candidate, including serialized Action IR wire-shape regressions.
+- [x] T002-17 Harden `qualification` under the same check context with committed-lock verification, least-privilege credential-free exact-head checkout, pinned Rust fmt/clippy/test/doc-test checks, synthetic integrated-candidate checkout, exact parent ancestry proof, and the repeated locked Rust suite on the integrated candidate.
+- [ ] T002-18 Execute focused and full exact-head R3 verification on the final immutable implementation head. Latest fully green code head: `d63a172e0506267188045d3c2fc750d40c2a175a`; the evidence-reconciliation successor must requalify before this task closes.
+- [ ] T002-19 Obtain substantive independent semantic review/approval of the final implementation head and reconcile all findings/threads. Author-side review and automated summaries do not by themselves close this gate.
+- [x] T002-20 Maintain a bounded implementation PR without merge: draft PR #10 was closed unmerged as superseded; active non-draft PR #11 preserves the implementation branch and remains blocked by Issue #3.
 
 ## Canonical merge and closeout
 
-- [ ] T002-21 Observe Issue #3 closed from required live external enforcement evidence.
+- [ ] T002-21 Observe Issue #3 closed from required live external enforcement evidence and bounded negative/positive enforcement-path proof.
 - [ ] T002-22 Requalify exact implementation head after current-main reconciliation.
-- [ ] T002-23 Guarded expected-head merge with required independent review and zero unresolved threads.
+- [ ] T002-23 Guarded expected-head merge with required independent approval and zero unresolved threads.
 - [ ] T002-24 Require canonical post-merge `qualification` success.
 - [ ] T002-25 Re-read canonical `main` and close Specification 002.
 
