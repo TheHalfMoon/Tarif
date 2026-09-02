@@ -8,15 +8,17 @@ The repository defines one stable GitHub Actions workflow/job contract:
 
 - workflow: `Tarif Qualification`
 - job: `qualification`
-- expected check label: `Tarif Qualification / qualification`
+- observed GitHub check-run context: `qualification`
 
-The initial workflow validates exact-diff hygiene and the presence of canonical governance/security files. When the Rust workspace is established, Rust formatting, linting, tests, and any later deterministic qualification steps should be added under this stable job rather than renaming the required-check contract without a separate governance decision.
+GitHub's first exact-head run on PR #8 reported check-run `name = "qualification"`. That observed API value, not a guessed UI-composed label, is the canonical required-check context candidate for future branch/ruleset configuration.
+
+The initial workflow validates exact-diff hygiene and the presence of canonical governance/security files. When the Rust workspace is established, Rust formatting, linting, tests, and any later deterministic qualification steps should be added under this stable job rather than renaming the required-check context without a separate governance decision.
 
 ## Critical limitation
 
 A workflow file is not a mandatory enforcement boundary by itself.
 
-Until live branch protection or a repository/organization ruleset requires the qualification check and required review behavior on `main`, a repository actor with sufficient GitHub permission can merge without satisfying the workflow. Tarif must not call the R3 merge boundary enforced merely because `.github/workflows/qualification.yml` exists.
+Until live branch protection or a repository/organization ruleset requires the `qualification` check and required review behavior on `main`, a repository actor with sufficient GitHub permission can merge without satisfying the workflow. Tarif must not call the R3 merge boundary enforced merely because `.github/workflows/qualification.yml` exists.
 
 Issue #3 owns the remaining external enforcement prerequisite.
 
@@ -25,7 +27,7 @@ Issue #3 owns the remaining external enforcement prerequisite.
 Issue #3 may close only after live GitHub evidence demonstrates the intended controls, including:
 
 - PR-based change control for `main`;
-- the exact qualification check required;
+- exact required check context `qualification`, unless later live evidence explicitly changes it through a separate governance decision;
 - substantive independent review requirement for R3 work;
 - no ordinary force-push/destructive history path;
 - bounded negative proof that an unqualified head cannot merge;
