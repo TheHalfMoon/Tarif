@@ -10,20 +10,21 @@
 
 `002-action-ir-canonicalization`
 
-Status: `ACTIVE_R3_IMPLEMENTATION_AFTER_SHAPING_MERGE`
+Status: `ACTIVE_R3_IMPLEMENTATION_BRANCH`
 Risk: `R3`
+Canonical shaping merge: `b1b3cecc7c2de32a4ecdba02a6bb752ae7a050c5`
+Implementation branch: `feat/002-action-ir-canonicalization`
 
-This candidate state becomes canonical only when the Specification 002 shaping PR is merged. Until then, canonical `main` remains authoritative.
-
-## Product authority after shaping merge
+## Current product authority
 
 Authorized:
 
 - minimal Rust workspace and `tarif-core` required for this specification;
 - strict `tarif.action/v1` representation of the supported MCP 2026-07-28 baseline `tools/call` profile;
 - duplicate-safe strict JSON ingestion;
-- RFC 8785 JCS canonical bytes through a qualified dependency/wrapper;
-- explicit case-sensitive tool-name profile and omitted/present arguments distinction;
+- RFC 8785 JCS canonical bytes through the pinned/qualified dependency wrapper;
+- exact case-sensitive tool-name profile and omitted/present arguments distinction;
+- supported server-visible MCP envelope context bound as untrusted execution context, never authenticated identity;
 - fail-closed rejection of unsupported MRTR/task/unknown execution-affecting metadata;
 - Action IR error taxonomy and adversarial tests;
 - extension of existing GitHub Actions check context `qualification` with Rust fmt/clippy/test.
@@ -44,9 +45,13 @@ Not authorized:
 
 ## Mandatory R3 merge blocker
 
-Issue #3 remains open. Live post-001A GitHub truth showed `main` still unprotected and required status-check enforcement off even though repository-side `qualification` runs succeed.
+Issue #3 remains open. Repository-side `qualification` is evidence, not mandatory external enforcement.
 
-Specification 002 implementation may proceed on a bounded branch after the shaping merge, but **must not merge into canonical `main` while Issue #3 remains unresolved**.
+The Specification 002 implementation branch may be built, tested, reviewed, and repaired. It **must not merge into canonical `main` while Issue #3 remains unresolved**.
+
+## Current qualification stage
+
+The first implementation head is a bootstrap candidate. CI must generate a dependency lock artifact, run formatting/clippy/tests, and expose any implementation defects. A later exact head must commit `Cargo.lock` and pass the locked qualification commands before branch implementation can be called verified.
 
 ## Next eligibility
 

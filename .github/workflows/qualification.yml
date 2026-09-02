@@ -61,3 +61,36 @@ jobs:
           if "Issue #3" not in current:
               raise SystemExit("specs/CURRENT.md must preserve the live R3 enforcement blocker")
           PY
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+          rustup override set 1.98.0
+          rustc --version | grep -F "rustc 1.98.0"
+          cargo --version
+
+      - name: Generate dependency lock for bootstrap qualification
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile
+
+      - name: Upload bootstrap Cargo.lock
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: spec-002-cargo-lock
+          path: Cargo.lock
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+
+      - name: Rust clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --workspace --all-targets --locked

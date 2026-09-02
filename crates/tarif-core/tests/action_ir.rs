@@ -1,0 +1,171 @@
+use tarif_core::{
+    ACTION_SCHEMA_V1, ActionError, MCP_REVISION_2026_07_28, canonical_bytes,
+    normalize_and_canonicalize, normalize_mcp_tools_call, parse_action_ir,
+};
+
+fn request(params: &str) -> String {
+    format!(r#"{{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{params}}}"#)
+}
+
+fn canonical(raw: &str) -> Vec<u8> {
+    normalize_and_canonicalize(raw, MCP_REVISION_2026_07_28)
+        .expect("request should normalize")
+        .1
+}
+
+#[test]
+fn object_order_and_whitespace_canonicalize_identically() {
+    let first = request(r#"{"name":"search","arguments":{"b":2,"a":1}}"#);
+    let second = r#"{ "params": { "arguments": { "a": 1, "b": 2 }, "name": "search" }, "method": "tools/call", "id": 99, "jsonrpc": "2.0" }"#;
+    assert_eq!(canonical(&first), canonical(second));
+}
+
+#[test]
+fn repeated_canonicalization_is_deterministic() {
+    let raw = request(r#"{"name":"search","arguments":{"q":"otters"}}"#);
+    let action = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap();
+    assert_eq!(canonical_bytes(&action).unwrap(), canonical_bytes(&action).unwrap());
+}
+
+#[test]
+fn nested_duplicate_keys_fail_before_map_collapse() {
+    let raw = request(r#"{"name":"search","arguments":{"nested":{"x":1,"x":2}}}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "duplicate_json_key");
+    assert!(matches!(error, ActionError::DuplicateJsonKey(key) if key == "x"));
+}
+
+#[test]
+fn malformed_json_fails_closed() {
+    let error = normalize_mcp_tools_call("{", MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "invalid_json");
+}
+
+#[test]
+fn jcs_number_semantics_are_applied_before_action_construction() {
+    let raw = request(r#"{"name":"search","arguments":{"n":333333333.33333329}}"#);
+    let bytes = canonical(&raw);
+    let text = String::from_utf8(bytes).unwrap();
+    assert!(text.contains("333333333.3333333"));
+}
+
+#[test]
+fn unicode_is_not_normalized() {
+    let precomposed = request(r#"{"name":"search","arguments":{"q":"é"}}"#);
+    let decomposed = request(r#"{"name":"search","arguments":{"q":"é"}}"#);
+    assert_ne!(canonical(&precomposed), canonical(&decomposed));
+}
+
+#[test]
+fn tool_names_are_case_sensitive() {
+    let lower = request(r#"{"name":"search"}"#);
+    let upper = request(r#"{"name":"Search"}"#);
+    assert_ne!(canonical(&lower), canonical(&upper));
+}
+
+#[test]
+fn non_profile_tool_names_fail_closed() {
+    let raw = request(r#"{"name":"search tool"}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "invalid_tool_name");
+}
+
+#[test]
+fn omitted_arguments_are_distinct_from_present_empty_object() {
+    let absent = request(r#"{"name":"search"}"#);
+    let present = request(r#"{"name":"search","arguments":{}}"#);
+    assert_ne!(canonical(&absent), canonical(&present));
+}
+
+#[test]
+fn arguments_must_be_an_object() {
+    let raw = request(r#"{"name":"search","arguments":[1,2]}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "arguments_not_object");
+}
+
+#[test]
+fn mrtr_state_fails_closed() {
+    for field in ["inputResponses", "requestState"] {
+        let raw = request(&format!(r#"{{"name":"search","{field}":{{}}}}"#));
+        let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+        assert_eq!(error.code(), "unsupported_execution_state");
+    }
+}
+
+#[test]
+fn unknown_meta_fails_closed() {
+    let raw = request(r#"{"name":"search","_meta":{"vendor/example":true}}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "unknown_meta_field");
+}
+
+#[test]
+fn envelope_protocol_version_must_match() {
+    let raw = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/protocolVersion":"2025-11-25"}}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "protocol_version_mismatch");
+}
+
+#[test]
+fn unsupported_revision_fails_closed() {
+    let raw = request(r#"{"name":"search"}"#);
+    let error = normalize_mcp_tools_call(&raw, "2025-11-25").unwrap_err();
+    assert_eq!(error.code(), "unsupported_protocol_revision");
+}
+
+#[test]
+fn client_context_is_bound_but_not_promoted_to_identity() {
+    let one = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientInfo":{"name":"one","version":"1"}}}"#);
+    let two = request(r#"{"name":"search","_meta":{"io.modelcontextprotocol/clientInfo":{"name":"two","version":"1"}}}"#);
+    let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
+    assert!(action.mcp_context.contains_key("io.modelcontextprotocol/clientInfo"));
+    assert_ne!(canonical(&one), canonical(&two));
+}
+
+#[test]
+fn trace_context_does_not_become_action_authority() {
+    let one = request(r#"{"name":"search","_meta":{"traceparent":"00-a-b-00"}}"#);
+    let two = request(r#"{"name":"search","_meta":{"traceparent":"00-c-d-00"}}"#);
+    assert_eq!(canonical(&one), canonical(&two));
+}
+
+#[test]
+fn unknown_action_schema_is_rejected() {
+    let raw = r#"{"schema":"tarif.action/v2","protocol":{"name":"mcp","revision":"2026-07-28"},"operation":"tools/call","target":{"kind":"mcp_tool","name":"search"},"arguments":{"state":"absent"},"mcp_context":{}}"#;
+    let error = parse_action_ir(raw).unwrap_err();
+    assert_eq!(error.code(), "unsupported_action_schema");
+}
+
+#[test]
+fn generated_action_ir_round_trips_through_strict_parser() {
+    let raw = request(r#"{"name":"search","arguments":{"q":"otters"}}"#);
+    let action = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap();
+    assert_eq!(action.schema, ACTION_SCHEMA_V1);
+    let bytes = canonical_bytes(&action).unwrap();
+    let reparsed = parse_action_ir(std::str::from_utf8(&bytes).unwrap()).unwrap();
+    assert_eq!(action, reparsed);
+}
+
+#[test]
+fn unpaired_unicode_surrogate_is_rejected() {
+    let raw = request(r#"{"name":"search","arguments":{"q":"\uD800"}}"#);
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "invalid_json");
+}
+
+#[test]
+fn excessive_nesting_is_rejected_by_the_strict_parser_boundary() {
+    let nesting = 200;
+    let arrays = "[".repeat(nesting) + "0" + &"]".repeat(nesting);
+    let raw = request(&format!(r#"{{"name":"search","arguments":{{"x":{arrays}}}}}"#));
+    let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "invalid_json");
+}
+
+#[test]
+fn unknown_top_level_fields_fail_closed() {
+    let raw = r#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search"},"extra":true}"#;
+    let error = normalize_mcp_tools_call(raw, MCP_REVISION_2026_07_28).unwrap_err();
+    assert_eq!(error.code(), "unknown_top_level_field");
+}

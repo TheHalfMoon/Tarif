@@ -9,22 +9,22 @@ Task completion is exact-evidence sensitive. Branch implementation completion is
 - [x] T002-03 Research RFC 8785 JCS and Rust implementation candidates.
 - [x] T002-04 Define the bounded baseline MCP `tools/call` Action IR.
 - [x] T002-05 Record ADR-0001 and adversarial corpus.
-- [ ] T002-06 Verify exact shaping diff is documentation/evidence/specification only.
-- [ ] T002-07 Open shaping PR and require exact-head `qualification` success.
-- [ ] T002-08 Resolve substantive shaping-review findings.
-- [ ] T002-09 Guarded merge exact qualified shaping head.
-- [ ] T002-10 Re-read canonical shaping merge before implementation.
+- [x] T002-06 Verify exact shaping diff is documentation/evidence/specification only.
+- [x] T002-07 Open shaping PR #9 and require exact-head `qualification` success.
+- [x] T002-08 Resolve substantive shaping-review findings.
+- [x] T002-09 Guarded merge exact qualified shaping head `dcc991af8b4793f89e25978868152f7ef95544f4` as `b1b3cecc7c2de32a4ecdba02a6bb752ae7a050c5`.
+- [x] T002-10 Re-read canonical shaping merge; post-merge `qualification` succeeded.
 
 ## R3 implementation
 
-- [ ] T002-11 Establish minimal Rust workspace/toolchain.
-- [ ] T002-12 Implement strict duplicate-safe JSON ingestion.
-- [ ] T002-13 Implement Action IR types and MCP baseline normalization.
-- [ ] T002-14 Implement RFC 8785 canonical bytes through qualified dependency/wrapper.
-- [ ] T002-15 Implement fail-closed unsupported-state/error taxonomy.
-- [ ] T002-16 Add positive/negative/adversarial corpus.
-- [ ] T002-17 Extend `qualification` with Rust fmt/clippy/test under the same check context.
-- [ ] T002-18 Execute focused and full exact-head R3 verification.
+- [x] T002-11 Establish minimal Rust workspace/toolchain candidate (Rust 1.98.0; pending CI proof).
+- [x] T002-12 Implement strict duplicate-safe JSON ingestion candidate.
+- [x] T002-13 Implement Action IR types and MCP baseline normalization candidate.
+- [x] T002-14 Implement RFC 8785 canonical bytes through pinned `serde_json_canonicalizer` 0.3.2 candidate.
+- [x] T002-15 Implement fail-closed unsupported-state/error taxonomy candidate.
+- [x] T002-16 Add positive/negative/adversarial corpus candidate.
+- [x] T002-17 Extend `qualification` with Rust fmt/clippy/test under the same check context; bootstrap run also generates a lockfile artifact.
+- [ ] T002-18 Execute focused and full exact-head R3 verification with committed `Cargo.lock` and `--locked` commands.
 - [ ] T002-19 Obtain substantive semantic review and reconcile all threads.
 - [ ] T002-20 Open/maintain bounded implementation PR but do not merge while Issue #3 is open.
 
