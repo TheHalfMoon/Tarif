@@ -321,13 +321,34 @@ pub fn normalize_mcp_tools_call(
 /// Parse a serialized Action IR through the same duplicate-safe JSON boundary.
 pub fn parse_action_ir(raw_action: &str) -> Result<Action, ActionError> {
     let value = parse_strict_json(raw_action)?;
-    let schema = value
+    let object = value
         .as_object()
-        .and_then(|object| object.get("schema"))
+        .ok_or_else(|| ActionError::InvalidActionIr("action must be an object".to_owned()))?;
+
+    let schema = object
+        .get("schema")
         .and_then(Value::as_str)
         .ok_or_else(|| ActionError::InvalidActionIr("missing string schema".to_owned()))?;
     if schema != ACTION_SCHEMA_V1 {
         return Err(ActionError::UnsupportedActionSchema(schema.to_owned()));
+    }
+
+    let arguments = object
+        .get("arguments")
+        .and_then(Value::as_object)
+        .ok_or_else(|| ActionError::InvalidActionIr("arguments must be an object".to_owned()))?;
+    match arguments.get("state").and_then(Value::as_str) {
+        Some("absent") if arguments.contains_key("value") => {
+            return Err(ActionError::InvalidActionIr(
+                "arguments.value must be omitted when state is absent".to_owned(),
+            ));
+        }
+        Some("present") if !arguments.contains_key("value") => {
+            return Err(ActionError::InvalidActionIr(
+                "arguments.value is required when state is present".to_owned(),
+            ));
+        }
+        _ => {}
     }
 
     let wire: ActionWire = serde_json::from_value(value)
