@@ -17,16 +17,16 @@ Task completion is exact-evidence sensitive. Branch implementation completion is
 
 ## R3 implementation
 
-- [x] T002-11 Establish minimal Rust workspace/toolchain candidate (Rust 1.98.0; pending CI proof).
+- [x] T002-11 Establish minimal Rust workspace/toolchain candidate pinned to Rust 1.98.0.
 - [x] T002-12 Implement strict duplicate-safe JSON ingestion candidate.
 - [x] T002-13 Implement Action IR types and MCP baseline normalization candidate.
 - [x] T002-14 Implement RFC 8785 canonical bytes through pinned `serde_json_canonicalizer` 0.3.2 candidate.
 - [x] T002-15 Implement fail-closed unsupported-state/error taxonomy candidate.
 - [x] T002-16 Add positive/negative/adversarial corpus candidate.
-- [x] T002-17 Extend `qualification` with Rust fmt/clippy/test under the same check context; bootstrap run also generates a lockfile artifact.
-- [ ] T002-18 Execute focused and full exact-head R3 verification with committed `Cargo.lock` and `--locked` commands.
-- [ ] T002-19 Obtain substantive semantic review and reconcile all threads.
-- [ ] T002-20 Open/maintain bounded implementation PR but do not merge while Issue #3 is open.
+- [x] T002-17 Extend `qualification` under the same check context with committed-lock verification, read-only pinned Rust fmt/clippy/test/doc-test checks, and exact PR-head checkout.
+- [ ] T002-18 Execute focused and full exact-head R3 verification on the final immutable implementation head.
+- [ ] T002-19 Obtain substantive semantic review of the final implementation head and reconcile all threads.
+- [x] T002-20 Open and maintain bounded draft implementation PR #10; do not merge while Issue #3 is open.
 
 ## Canonical merge and closeout
 
