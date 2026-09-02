@@ -9,7 +9,43 @@ Tarif can transform one supported MCP 2026-07-28 baseline `tools/call` request i
 
 ## Security invariant
 
-Two executions that differ in any security-relevant field modeled by this specification must not silently collapse to the same normalized action because of case folding, Unicode normalization, duplicate-key loss, omitted/present-field collapse, or ignored retry/extension state.
+Two executions that differ in any security-relevant field modeled by this specification must not silently collapse to the same normalized action because of case folding, Unicode normalization, duplicate-key loss, omitted/present-field collapse, ignored server-visible context, or ignored retry/extension state.
+
+## Canonical Action IR contract
+
+The Action IR is an internal Tarif contract, not a new network protocol.
+
+A supported action serializes to this logical shape before JCS canonicalization:
+
+```json
+{
+  "schema": "tarif.action/v1",
+  "protocol": {
+    "name": "mcp",
+    "revision": "2026-07-28"
+  },
+  "operation": "tools/call",
+  "target": {
+    "kind": "mcp_tool",
+    "name": "search"
+  },
+  "arguments": {
+    "state": "present",
+    "value": {
+      "q": "otters"
+    }
+  },
+  "mcp_context": {}
+}
+```
+
+Omitted arguments are represented exactly as `{"state":"absent"}`; present arguments use `{"state":"present","value":{...}}`. The two states are never collapsed.
+
+`mcp_context` preserves supported present server-visible request-envelope context that is not otherwise represented. In v0.1 this means `io.modelcontextprotocol/clientInfo`, `io.modelcontextprotocol/clientCapabilities`, and `io.modelcontextprotocol/logLevel` when present. These values are explicitly **untrusted execution context**, not authenticated principal/workload identity.
+
+`io.modelcontextprotocol/protocolVersion` must agree with the explicit supported protocol revision and is represented by `protocol.revision` rather than duplicated in `mcp_context`.
+
+Standard trace propagation (`traceparent`, `tracestate`, `baggage`) is observability context and is excluded from Action IR/authorization semantics. Any other `_meta` extension key is unsupported in this first profile and fails closed.
 
 ## Scope in
 
@@ -19,7 +55,9 @@ Two executions that differ in any security-relevant field modeled by this specif
 - duplicate-key-safe strict JSON ingestion;
 - exact tool-name validation for the initial 1–128 ASCII `[A-Za-z0-9_.-]` support profile;
 - explicit distinction between absent arguments and present object arguments;
-- rejection of unsupported MRTR/task/unknown execution-affecting metadata;
+- binding of supported present MCP envelope fields as untrusted `mcp_context`;
+- exclusion of trace-only metadata from authority semantics;
+- rejection of unsupported MRTR/task/unknown `_meta` extension state;
 - deterministic error taxonomy suitable for later adapters;
 - adversarial, negative-path, property/fuzz-style tests where justified;
 - qualification workflow extension with Rust fmt/clippy/test under existing check context `qualification`.
@@ -27,9 +65,9 @@ Two executions that differ in any security-relevant field modeled by this specif
 ## Scope out
 
 - network/stdio MCP proxying or forwarding;
-- `Mcp-Method`/`Mcp-Name` HTTP-header agreement enforcement (Specification 004 integration concern);
+- `Mcp-Method`/`Mcp-Name`/`Mcp-Param-*` HTTP-header agreement enforcement (Specification 004 integration concern);
 - AuthZEN/PDP mapping or authorization decisions;
-- identity/principal/workload authentication;
+- authenticated identity/principal/workload integration;
 - credentials or secrets;
 - approvals/revalidation;
 - cryptographic action digest or evidence chain;
@@ -47,13 +85,15 @@ Two executions that differ in any security-relevant field modeled by this specif
 4. Tool names are preserved exactly and are case-sensitive; v0.1 rejects names outside the explicit supported profile instead of rewriting them.
 5. Omitted `arguments` and present `{}` produce distinct Action IR values/canonical bytes.
 6. Arguments, when present, must be a JSON object.
-7. `inputResponses`, `requestState`, task-augmented state, or unknown execution-affecting metadata cannot be silently omitted from action identity; unsupported states are rejected.
-8. Self-reported MCP `clientInfo`/`serverInfo` never becomes security identity input.
-9. Repeated normalization of the same supported input is deterministic.
-10. The implementation exposes stable typed errors for unsupported protocol/version/method/name/state and malformed/canonicalization failures.
-11. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --all-targets --locked` pass on the exact implementation head and are executed under the existing `qualification` workflow context.
-12. R3 negative/adversarial evidence covers the corpus defined in `docs/research/action-ir-canonicalization.md`.
-13. No product claim exceeds the narrow supported MCP Action IR boundary.
+7. `inputResponses`, `requestState`, task-augmented state, or unknown `_meta` extension keys cannot be silently omitted; unsupported states are rejected.
+8. A request-envelope protocol version that disagrees with the explicit supported revision is rejected.
+9. Present supported `clientInfo`, `clientCapabilities`, and `logLevel` are preserved as untrusted `mcp_context`; changing them changes canonical action context but never authenticates a principal.
+10. Trace-only metadata does not grant or alter authority semantics.
+11. Repeated normalization of the same supported input is deterministic.
+12. The implementation exposes stable typed errors for unsupported protocol/version/method/name/state/metadata and malformed/canonicalization failures.
+13. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --all-targets --locked` pass on the exact implementation head and are executed under the existing `qualification` workflow context.
+14. R3 negative/adversarial evidence covers the corpus defined in `docs/research/action-ir-canonicalization.md`.
+15. No product claim exceeds the narrow supported MCP Action IR boundary.
 
 ## Dependency decision boundary
 
