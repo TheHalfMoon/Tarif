@@ -71,10 +71,27 @@ jobs:
           rustc --version | grep -F "rustc 1.98.0"
           cargo --version
 
+      - name: Regenerate dependency lock for comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp Cargo.lock Cargo.lock.committed
+          cargo generate-lockfile
+
+      - name: Upload regenerated Cargo.lock
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: spec-002-lock-recheck
+          path: Cargo.lock
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Verify committed dependency lock
         shell: bash
         run: |
           set -euo pipefail
+          cmp Cargo.lock.committed Cargo.lock
           cargo metadata --locked --format-version 1 >/dev/null
 
       - name: Produce rustfmt candidate
