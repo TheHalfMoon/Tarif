@@ -87,12 +87,33 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Verify committed dependency lock
+      - name: Compare committed dependency lock
+        shell: bash
+        run: cmp Cargo.lock.committed Cargo.lock
+
+      - name: Capture locked Cargo metadata
         shell: bash
         run: |
-          set -euo pipefail
-          cmp Cargo.lock.committed Cargo.lock
-          cargo metadata --locked --format-version 1 >/dev/null
+          set +e
+          cargo metadata --locked --format-version 1 >/dev/null 2>cargo-metadata.err
+          status=$?
+          echo "$status" > cargo-metadata.status
+          exit 0
+
+      - name: Upload Cargo metadata diagnostics
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: spec-002-cargo-metadata
+          path: |
+            cargo-metadata.err
+            cargo-metadata.status
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Verify locked Cargo metadata
+        shell: bash
+        run: test "$(cat cargo-metadata.status)" = "0"
 
       - name: Produce rustfmt candidate
         shell: bash
