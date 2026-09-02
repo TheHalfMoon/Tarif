@@ -53,6 +53,14 @@ fn jcs_number_semantics_are_applied_before_action_construction() {
 }
 
 #[test]
+fn high_precision_integer_is_normalized_before_action_construction() {
+    let raw = request(r#"{"name":"search","arguments":{"n":9007199254740993}}"#);
+    let bytes = canonical(&raw);
+    let text = String::from_utf8(bytes).unwrap();
+    assert!(text.contains("9007199254740992"));
+}
+
+#[test]
 fn jcs_incompatible_number_fails_closed() {
     let raw = request(r#"{"name":"search","arguments":{"n":1e400}}"#);
     let error = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap_err();
@@ -132,8 +140,8 @@ fn matching_envelope_protocol_version_is_bound_by_protocol_revision_only() {
         r#"{"name":"search","_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}"#,
     );
     let action = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap();
-    assert!(action.mcp_context.is_empty());
-    assert_eq!(action.protocol.revision, MCP_REVISION_2026_07_28);
+    assert!(action.mcp_context().is_empty());
+    assert_eq!(action.protocol().revision(), MCP_REVISION_2026_07_28);
 }
 
 #[test]
@@ -154,7 +162,7 @@ fn client_info_is_bound_but_not_promoted_to_identity() {
     let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
     assert!(
         action
-            .mcp_context
+            .mcp_context()
             .contains_key("io.modelcontextprotocol/clientInfo")
     );
     assert_ne!(canonical(&one), canonical(&two));
@@ -171,7 +179,7 @@ fn client_capabilities_are_bound_as_untrusted_context() {
     let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
     assert!(
         action
-            .mcp_context
+            .mcp_context()
             .contains_key("io.modelcontextprotocol/clientCapabilities")
     );
     assert_ne!(canonical(&one), canonical(&two));
@@ -184,7 +192,7 @@ fn log_level_is_bound_as_untrusted_context() {
     let action = normalize_mcp_tools_call(&one, MCP_REVISION_2026_07_28).unwrap();
     assert!(
         action
-            .mcp_context
+            .mcp_context()
             .contains_key("io.modelcontextprotocol/logLevel")
     );
     assert_ne!(canonical(&one), canonical(&two));
@@ -225,7 +233,7 @@ fn unknown_action_schema_is_rejected() {
 fn generated_action_ir_round_trips_through_strict_parser() {
     let raw = request(r#"{"name":"search","arguments":{"q":"otters"}}"#);
     let action = normalize_mcp_tools_call(&raw, MCP_REVISION_2026_07_28).unwrap();
-    assert_eq!(action.schema, ACTION_SCHEMA_V1);
+    assert_eq!(action.schema(), ACTION_SCHEMA_V1);
     let bytes = canonical_bytes(&action).unwrap();
     let reparsed = parse_action_ir(std::str::from_utf8(&bytes).unwrap()).unwrap();
     assert_eq!(action, reparsed);
