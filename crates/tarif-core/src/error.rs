@@ -11,6 +11,7 @@ pub enum ActionError {
     UnknownTopLevelField(String),
     InvalidJsonRpcVersion,
     InvalidRequestId,
+    UnsupportedProtocol(String),
     UnsupportedProtocolRevision(String),
     UnsupportedMethod(String),
     InvalidToolName(String),
@@ -43,6 +44,7 @@ impl ActionError {
             Self::UnknownTopLevelField(_) => "unknown_top_level_field",
             Self::InvalidJsonRpcVersion => "invalid_jsonrpc_version",
             Self::InvalidRequestId => "invalid_request_id",
+            Self::UnsupportedProtocol(_) => "unsupported_protocol",
             Self::UnsupportedProtocolRevision(_) => "unsupported_protocol_revision",
             Self::UnsupportedMethod(_) => "unsupported_method",
             Self::InvalidToolName(_) => "invalid_tool_name",
@@ -70,6 +72,9 @@ impl fmt::Display for ActionError {
             Self::InvalidJsonRpcVersion => f.write_str("jsonrpc must be exactly \"2.0\""),
             Self::InvalidRequestId => {
                 f.write_str("MCP tools/call must contain a string or number request id")
+            }
+            Self::UnsupportedProtocol(protocol) => {
+                write!(f, "unsupported protocol: {protocol}")
             }
             Self::UnsupportedProtocolRevision(revision) => {
                 write!(f, "unsupported MCP protocol revision: {revision}")
