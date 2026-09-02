@@ -1,0 +1,15 @@
+[workspace]
+members = ["crates/tarif-core"]
+resolver = "3"
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.98"
+license = "Apache-2.0"
+repository = "https://github.com/TheHalfMoon/Tarif"
+
+[workspace.dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = { version = "=1.0.149", features = ["float_roundtrip"] }
+serde_json_canonicalizer = "=0.3.2"
