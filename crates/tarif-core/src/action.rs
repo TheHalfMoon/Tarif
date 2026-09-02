@@ -84,10 +84,10 @@ struct TargetWire {
 }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ActionArgumentsWire {
-    state: ArgumentState,
-    value: Option<Value>,
+#[serde(tag = "state", rename_all = "lowercase", deny_unknown_fields)]
+enum ActionArgumentsWire {
+    Absent,
+    Present { value: Value },
 }
 
 impl From<ActionWire> for Action {
@@ -103,9 +103,15 @@ impl From<ActionWire> for Action {
                 kind: wire.target.kind,
                 name: wire.target.name,
             },
-            arguments: ActionArguments {
-                state: wire.arguments.state,
-                value: wire.arguments.value,
+            arguments: match wire.arguments {
+                ActionArgumentsWire::Absent => ActionArguments {
+                    state: ArgumentState::Absent,
+                    value: None,
+                },
+                ActionArgumentsWire::Present { value } => ActionArguments {
+                    state: ArgumentState::Present,
+                    value: Some(value),
+                },
             },
             mcp_context: wire.mcp_context,
         }
