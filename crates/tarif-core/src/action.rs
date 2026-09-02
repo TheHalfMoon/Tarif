@@ -154,9 +154,7 @@ impl Action {
             return Err(ActionError::UnsupportedActionSchema(self.schema.clone()));
         }
         if self.protocol.name != MCP_PROTOCOL_NAME {
-            return Err(ActionError::InvalidActionIr(format!(
-                "protocol.name must be {MCP_PROTOCOL_NAME}"
-            )));
+            return Err(ActionError::UnsupportedProtocol(self.protocol.name.clone()));
         }
         if self.protocol.revision != MCP_REVISION_2026_07_28 {
             return Err(ActionError::UnsupportedProtocolRevision(
