@@ -16,29 +16,32 @@ const META_CLIENT_CAPABILITIES: &str = "io.modelcontextprotocol/clientCapabiliti
 const META_LOG_LEVEL: &str = "io.modelcontextprotocol/logLevel";
 const TRACE_KEYS: [&str; 3] = ["traceparent", "tracestate", "baggage"];
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// A validated Tarif Action IR value.
+///
+/// Fields are intentionally private and `Action` does not implement
+/// `Deserialize`. This makes the strict Tarif ingestion paths the construction
+/// boundary for canonicalizable actions, preventing callers from bypassing
+/// JCS/I-JSON number normalization with arbitrary `serde_json::Value`s.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Action {
-    pub schema: String,
-    pub protocol: ProtocolDescriptor,
-    pub operation: String,
-    pub target: Target,
-    pub arguments: ActionArguments,
-    pub mcp_context: BTreeMap<String, Value>,
+    schema: String,
+    protocol: ProtocolDescriptor,
+    operation: String,
+    target: Target,
+    arguments: ActionArguments,
+    mcp_context: BTreeMap<String, Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ProtocolDescriptor {
-    pub name: String,
-    pub revision: String,
+    name: String,
+    revision: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Target {
-    pub kind: String,
-    pub name: String,
+    kind: String,
+    name: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,15 +51,98 @@ pub enum ArgumentState {
     Present,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ActionArguments {
-    pub state: ArgumentState,
+    state: ArgumentState,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<Value>,
+    value: Option<Value>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ActionWire {
+    schema: String,
+    protocol: ProtocolDescriptorWire,
+    operation: String,
+    target: TargetWire,
+    arguments: ActionArgumentsWire,
+    mcp_context: BTreeMap<String, Value>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProtocolDescriptorWire {
+    name: String,
+    revision: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TargetWire {
+    kind: String,
+    name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ActionArgumentsWire {
+    state: ArgumentState,
+    value: Option<Value>,
+}
+
+impl From<ActionWire> for Action {
+    fn from(wire: ActionWire) -> Self {
+        Self {
+            schema: wire.schema,
+            protocol: ProtocolDescriptor {
+                name: wire.protocol.name,
+                revision: wire.protocol.revision,
+            },
+            operation: wire.operation,
+            target: Target {
+                kind: wire.target.kind,
+                name: wire.target.name,
+            },
+            arguments: ActionArguments {
+                state: wire.arguments.state,
+                value: wire.arguments.value,
+            },
+            mcp_context: wire.mcp_context,
+        }
+    }
 }
 
 impl Action {
+    #[must_use]
+    pub fn schema(&self) -> &str {
+        &self.schema
+    }
+
+    #[must_use]
+    pub fn protocol(&self) -> &ProtocolDescriptor {
+        &self.protocol
+    }
+
+    #[must_use]
+    pub fn operation(&self) -> &str {
+        &self.operation
+    }
+
+    #[must_use]
+    pub fn target(&self) -> &Target {
+        &self.target
+    }
+
+    #[must_use]
+    pub fn arguments(&self) -> &ActionArguments {
+        &self.arguments
+    }
+
+    #[must_use]
+    pub fn mcp_context(&self) -> &BTreeMap<String, Value> {
+        &self.mcp_context
+    }
+
     fn validate_contract(&self) -> Result<(), ActionError> {
         if self.schema != ACTION_SCHEMA_V1 {
             return Err(ActionError::UnsupportedActionSchema(self.schema.clone()));
@@ -94,6 +180,42 @@ impl Action {
 
         validate_canonical_context(&self.mcp_context)?;
         Ok(())
+    }
+}
+
+impl ProtocolDescriptor {
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[must_use]
+    pub fn revision(&self) -> &str {
+        &self.revision
+    }
+}
+
+impl Target {
+    #[must_use]
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl ActionArguments {
+    #[must_use]
+    pub const fn state(&self) -> ArgumentState {
+        self.state
+    }
+
+    #[must_use]
+    pub fn value(&self) -> Option<&Value> {
+        self.value.as_ref()
     }
 }
 
@@ -202,13 +324,18 @@ pub fn parse_action_ir(raw_action: &str) -> Result<Action, ActionError> {
         return Err(ActionError::UnsupportedActionSchema(schema.to_owned()));
     }
 
-    let action: Action = serde_json::from_value(value)
+    let wire: ActionWire = serde_json::from_value(value)
         .map_err(|error| ActionError::InvalidActionIr(error.to_string()))?;
+    let action = Action::from(wire);
     action.validate_contract()?;
     Ok(action)
 }
 
 /// Produce RFC 8785 JCS bytes for a validated Action IR.
+///
+/// `Action` values are sealed behind Tarif's strict ingestion boundary; callers
+/// cannot construct or deserialize an arbitrary action with unnormalized JSON
+/// numbers and then bypass that boundary here.
 pub fn canonical_bytes(action: &Action) -> Result<Vec<u8>, ActionError> {
     action.validate_contract()?;
     serde_json_canonicalizer::to_vec(action)
