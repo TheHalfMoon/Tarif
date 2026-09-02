@@ -1,0 +1,63 @@
+name: Tarif Qualification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  qualification:
+    name: qualification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact diff hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+          else
+            before="${{ github.event.before }}"
+            if [[ "$before" =~ ^0+$ ]]; then
+              git diff --check HEAD^ HEAD
+            else
+              git diff --check "$before..${{ github.sha }}"
+            fi
+          fi
+
+      - name: Verify canonical governance surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          required = [
+              "AGENTS.md",
+              "CONSTITUTION.md",
+              "CONTRIBUTING.md",
+              "SECURITY.md",
+              "LICENSE",
+              "docs/execution-master-plan.md",
+              "docs/threat-model.md",
+              "docs/tcb.md",
+              "docs/coverage-contract.md",
+              "specs/CURRENT.md",
+          ]
+          missing = [path for path in required if not Path(path).is_file()]
+          if missing:
+              raise SystemExit("missing canonical files: " + ", ".join(missing))
+
+          current = Path("specs/CURRENT.md").read_text(encoding="utf-8")
+          if "Issue #3" not in current:
+              raise SystemExit("specs/CURRENT.md must preserve the live R3 enforcement blocker")
+          PY
