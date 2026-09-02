@@ -35,15 +35,17 @@ A supported action serializes to this logical shape before JCS canonicalization:
       "q": "otters"
     }
   },
-  "mcp_context": {}
+  "mcp_context": {
+    "io.modelcontextprotocol/clientCapabilities": {}
+  }
 }
 ```
 
 Omitted arguments are represented exactly as `{"state":"absent"}`; present arguments use `{"state":"present","value":{...}}`. The two states are never collapsed.
 
-`mcp_context` preserves supported present server-visible request-envelope context that is not otherwise represented. In v0.1 this means `io.modelcontextprotocol/clientInfo`, `io.modelcontextprotocol/clientCapabilities`, and `io.modelcontextprotocol/logLevel` when present. These values are explicitly **untrusted execution context**, not authenticated principal/workload identity.
+For the MCP 2026-07-28 baseline, request `_meta` is required. `io.modelcontextprotocol/protocolVersion` and `io.modelcontextprotocol/clientCapabilities` must be present on every supported request. The protocol version must agree with the explicit supported revision and is represented by `protocol.revision` rather than duplicated in `mcp_context`. `clientCapabilities` is required to be an object and is always preserved in `mcp_context`, including when it is `{}`.
 
-`io.modelcontextprotocol/protocolVersion` must agree with the explicit supported protocol revision and is represented by `protocol.revision` rather than duplicated in `mcp_context`.
+`io.modelcontextprotocol/clientInfo` and `io.modelcontextprotocol/logLevel` are optional request metadata. When present, they are preserved in `mcp_context`. All preserved values are explicitly **untrusted execution context**, not authenticated principal/workload identity or proof of authority.
 
 Standard trace propagation (`traceparent`, `tracestate`, `baggage`) is observability context and is excluded from Action IR/authorization semantics. Any other `_meta` extension key is unsupported in this first profile and fails closed.
 
@@ -55,7 +57,8 @@ Standard trace propagation (`traceparent`, `tracestate`, `baggage`) is observabi
 - duplicate-key-safe strict JSON ingestion;
 - exact tool-name validation for the initial 1–128 ASCII `[A-Za-z0-9_.-]` support profile;
 - explicit distinction between absent arguments and present object arguments;
-- binding of supported present MCP envelope fields as untrusted `mcp_context`;
+- fail-closed enforcement of required MCP 2026-07-28 request `_meta`, including protocol version and per-request client capabilities;
+- binding of required `clientCapabilities` and optional supported MCP envelope fields as untrusted `mcp_context`;
 - exclusion of trace-only metadata from authority semantics;
 - rejection of unsupported MRTR/task/unknown `_meta` extension state;
 - deterministic error taxonomy suitable for later adapters;
@@ -86,8 +89,8 @@ Standard trace propagation (`traceparent`, `tracestate`, `baggage`) is observabi
 5. Omitted `arguments` and present `{}` produce distinct Action IR values/canonical bytes.
 6. Arguments, when present, must be a JSON object.
 7. `inputResponses`, `requestState`, task-augmented state, or unknown `_meta` extension keys cannot be silently omitted; unsupported states are rejected.
-8. A request-envelope protocol version that disagrees with the explicit supported revision is rejected.
-9. Present supported `clientInfo`, `clientCapabilities`, and `logLevel` are preserved as untrusted `mcp_context`; changing them changes canonical action context but never authenticates a principal.
+8. Missing request `_meta`, missing `io.modelcontextprotocol/protocolVersion`, missing `io.modelcontextprotocol/clientCapabilities`, or a request-envelope protocol version that disagrees with the explicit supported revision is rejected fail closed.
+9. Required `clientCapabilities` is preserved as untrusted `mcp_context`; optional supported `clientInfo` and `logLevel` are preserved when present. Changing preserved context changes canonical action context but never authenticates a principal.
 10. Trace-only metadata does not grant or alter authority semantics.
 11. Repeated normalization of the same supported input is deterministic.
 12. The implementation exposes stable typed errors for unsupported protocol/version/method/name/state/metadata and malformed/canonicalization failures.
