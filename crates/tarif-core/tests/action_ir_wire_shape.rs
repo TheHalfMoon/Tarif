@@ -14,8 +14,22 @@ fn absent_arguments_reject_explicit_value_even_null() {
 }
 
 #[test]
+fn absent_arguments_reject_unknown_fields() {
+    let raw = action_with_arguments(r#"{"state":"absent","extra":true}"#);
+    let error = parse_action_ir(&raw).unwrap_err();
+    assert_eq!(error.code(), "invalid_action_ir");
+}
+
+#[test]
 fn present_arguments_require_a_value() {
     let raw = action_with_arguments(r#"{"state":"present"}"#);
+    let error = parse_action_ir(&raw).unwrap_err();
+    assert_eq!(error.code(), "invalid_action_ir");
+}
+
+#[test]
+fn present_arguments_reject_unknown_fields() {
+    let raw = action_with_arguments(r#"{"state":"present","value":{},"extra":true}"#);
     let error = parse_action_ir(&raw).unwrap_err();
     assert_eq!(error.code(), "invalid_action_ir");
 }
