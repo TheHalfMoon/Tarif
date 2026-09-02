@@ -164,9 +164,7 @@ fn missing_request_protocol_version_fails_closed() {
     assert_eq!(error.code(), "missing_field");
     assert!(matches!(
         error,
-        ActionError::MissingField(
-            "params._meta.io.modelcontextprotocol/protocolVersion"
-        )
+        ActionError::MissingField("params._meta.io.modelcontextprotocol/protocolVersion")
     ));
 }
 
@@ -179,9 +177,7 @@ fn missing_request_client_capabilities_fails_closed() {
     assert_eq!(error.code(), "missing_field");
     assert!(matches!(
         error,
-        ActionError::MissingField(
-            "params._meta.io.modelcontextprotocol/clientCapabilities"
-        )
+        ActionError::MissingField("params._meta.io.modelcontextprotocol/clientCapabilities")
     ));
 }
 
@@ -312,9 +308,7 @@ fn serialized_action_ir_requires_client_capabilities_context() {
     assert_eq!(error.code(), "missing_field");
     assert!(matches!(
         error,
-        ActionError::MissingField(
-            "mcp_context.io.modelcontextprotocol/clientCapabilities"
-        )
+        ActionError::MissingField("mcp_context.io.modelcontextprotocol/clientCapabilities")
     ));
 }
 
